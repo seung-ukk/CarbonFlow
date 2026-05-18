@@ -1,0 +1,13 @@
+# 백엔드 제외 항목
+backend/venv/
+backend/.env
+backend/__pycache__/
+
+# 프론트엔드 제외 항목
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# IDE 설정 파일
+.vscode/
+.DS_Store
