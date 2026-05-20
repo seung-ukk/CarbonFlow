@@ -1,0 +1,32 @@
+[
+  {
+    "id": "washing_machine",
+    "name": "세탁기",
+    "category": "세탁가전",
+    "power_consumption_w": 500.0,
+    "duration_hours": 1.5,
+    "energy_rating": 1,
+    "is_eco_friendly": true,
+    "description": "표준 세탁 코스"
+  },
+  {
+    "id": "clothes_dryer",
+    "name": "건조기",
+    "category": "세탁가전",
+    "power_consumption_w": 2000.0,
+    "duration_hours": 2.0,
+    "energy_rating": 3,
+    "is_eco_friendly": false,
+    "description": "인버터 히트펌프 건조"
+  },
+  {
+    "id": "dishwasher",
+    "name": "식기세척기",
+    "category": "주방가전",
+    "power_consumption_w": 1500.0,
+    "duration_hours": 1.0,
+    "energy_rating": 2,
+    "is_eco_friendly": true,
+    "description": "고온 직수 세척 코스"
+  }
+]
