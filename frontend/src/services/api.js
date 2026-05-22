@@ -1,0 +1,20 @@
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: "http://127.0.0.1:8000",
+});
+
+export const SHOW_API_ERRORS = false;
+
+const unwrap = (response) => response.data?.data ?? response.data;
+
+export const getApiErrorMessage = (error, fallback) =>
+  error.response?.data?.message ?? fallback;
+
+export const getCurrentCarbon = async () => unwrap(await api.get("/api/carbon/current"));
+export const getForecast = async () => unwrap(await api.get("/api/carbon/forecast"));
+export const getRecommendations = async () =>
+  unwrap(await api.get("/api/carbon/recommendations"));
+export const getAppliances = async () => unwrap(await api.get("/appliances"));
+
+export default api;

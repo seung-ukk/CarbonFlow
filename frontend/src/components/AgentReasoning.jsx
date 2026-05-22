@@ -4,6 +4,10 @@ function AgentReasoning({ steps }) {
   const [visibleCount, setVisibleCount] = useState(0);
 
   useEffect(() => {
+    if (!steps || steps.length === 0) {
+      setVisibleCount(0);
+      return;
+    }
     setVisibleCount(0);
 
     const timer = setInterval(() => {
@@ -19,17 +23,22 @@ function AgentReasoning({ steps }) {
     return () => clearInterval(timer);
   }, [steps]);
 
-  return (
-    <section className="card mt-6">
-      <h3 className="card-title mb-5">AI Agent 추론 과정</h3>
+  if (!steps || steps.length === 0) return null;
 
-      <div className="space-y-4">
+  return (
+    <section className="card">
+      <h3 className="card-title mb-4">AI Agent 추론 과정</h3>
+
+      <div className="space-y-2">
         {steps.slice(0, visibleCount).map((step) => (
-          <div key={step.step} className="sub-card">
-            <p className="font-bold text-green-400">
-              {step.step}. {step.tool}
-            </p>
-            <p className="text-slate-300 mt-1">{step.result}</p>
+          <div key={step.step} className="flex gap-3 rounded-xl bg-gray-50 border border-gray-100 p-4">
+            <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+              {step.step}
+            </span>
+            <div>
+              <p className="text-xs font-bold text-violet-700">{step.tool}</p>
+              <p className="text-gray-600 mt-0.5 text-xs">{step.result}</p>
+            </div>
           </div>
         ))}
       </div>
