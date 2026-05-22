@@ -4,12 +4,14 @@ import HomePage from "./HomePage";
 import ForecastPage from "./ForecastPage";
 import RecommendPage from "./RecommendPage";
 import AppliancePage from "./AppliancePage";
+import LoginPage from "./LoginPage";
 
 const ROUTES = {
   home: HomePage,
   forecast: ForecastPage,
   recommend: RecommendPage,
   favorite: AppliancePage,
+  login: LoginPage,
 };
 
 function Dashboard() {

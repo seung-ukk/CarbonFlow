@@ -48,7 +48,7 @@ const STAT_CARDS = (best, worst, minIntensity) => [
   },
   {
     label: "예측 기간",
-    value: "12",
+    value: "24",
     unit: "시간",
     color: "text-violet-700",
     bg: "bg-violet-50",

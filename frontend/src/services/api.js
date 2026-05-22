@@ -16,5 +16,7 @@ export const getForecast = async () => unwrap(await api.get("/api/carbon/forecas
 export const getRecommendations = async () =>
   unwrap(await api.get("/api/carbon/recommendations"));
 export const getAppliances = async () => unwrap(await api.get("/appliances"));
+export const login = async ({ userId, password }) =>
+  unwrap(await api.post("/login", { id: userId, password }));
 
 export default api;

@@ -13,7 +13,7 @@ function ForecastChart({ data }) {
   if (!data || data.length === 0) {
     return (
       <section className="card">
-        <h3 className="card-title mb-5">12시간 탄소강도 예측</h3>
+        <h3 className="card-title mb-5">24시간 탄소강도 예측</h3>
         <p className="text-sm text-gray-500">표시할 예측 데이터가 없습니다.</p>
       </section>
     );
@@ -25,7 +25,7 @@ function ForecastChart({ data }) {
 
   return (
     <section className="card">
-      <h3 className="card-title mb-5">12시간 탄소강도 예측</h3>
+      <h3 className="card-title mb-5">24시간 탄소강도 예측</h3>
 
       <div className="w-full h-72">
         <ResponsiveContainer width="100%" height="100%">
@@ -53,13 +53,20 @@ function ForecastChart({ data }) {
               ticks={[0, 150, 300, 450, 600]}
             />
 
+            {/* 
+            <Tooltip
+              labelFormatter={(value) => `${new Date(value).getHours()}:00`}
+              formatter={(value) => [`${value} gCO2/kWh`, "탄소강도"]}
+            />
+            */}
+
             <Area
               type="monotone"
               dataKey="carbon_intensity"
               stroke="#374151"
               strokeWidth={2.5}
               fill="url(#carbonGrad)"
-              dot={{ fill: "#374151", stroke: "#ffffff", strokeWidth: 2, r: 4 }}
+              dot={{ fill: "#374151", stroke: "#ffffff", strokeWidth: 2, r: 3 }}
               activeDot={{ r: 6, fill: "#374151" }}
             />
 
@@ -77,7 +84,7 @@ function ForecastChart({ data }) {
 
       <p className="mt-3 text-green-600 font-bold text-sm">
         최저 탄소강도: {new Date(minItem.hour).getHours()}:00 &bull;{" "}
-        {minItem.carbon_intensity} gCO₂/kWh
+        {minItem.carbon_intensity} gCO2/kWh
       </p>
     </section>
   );

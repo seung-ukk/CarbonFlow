@@ -1,4 +1,4 @@
-const IconHome = () => (
+export const IconHome = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
     <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
     <path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198c.03-.028.061-.056.091-.086L12 5.432z" />
@@ -23,6 +23,12 @@ const IconBookmark = () => (
   </svg>
 );
 
+const IconLogin = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+    <path fillRule="evenodd" d="M7.5 3.75A3.75 3.75 0 1111.25 7.5 3.75 3.75 0 017.5 3.75zm-3 16.5a6.75 6.75 0 0113.5 0 .75.75 0 01-.75.75h-12a.75.75 0 01-.75-.75zm13.72-8.03a.75.75 0 011.06 0l2.25 2.25a.75.75 0 010 1.06l-2.25 2.25a.75.75 0 11-1.06-1.06l.97-.97H12a.75.75 0 010-1.5h7.19l-.97-.97a.75.75 0 010-1.06z" clipRule="evenodd" />
+  </svg>
+);
+
 const NAV = [
   { id: "home", label: "Home", Icon: IconHome },
   { id: "forecast", label: "Prediction", Icon: IconChart },
@@ -30,28 +36,47 @@ const NAV = [
   { id: "favorite", label: "Bookmark", Icon: IconBookmark },
 ];
 
+const AUTH_NAV = { id: "login", label: "Login", Icon: IconLogin };
+
+function NavButton({ item, active, onNavigate }) {
+  const { id, label, Icon } = item;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(id)}
+      className={`flex flex-col items-center justify-center gap-1 w-full min-h-16 rounded-2xl py-3 transition-colors ${
+        active
+          ? "bg-violet-100 text-violet-700"
+          : "text-gray-500 hover:bg-violet-50 hover:text-violet-600"
+      }`}
+    >
+      <Icon />
+      <span className="text-[11px] font-semibold">{label}</span>
+    </button>
+  );
+}
+
 function Sidebar({ route, onNavigate }) {
   return (
-    <aside className="w-24 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col items-center pt-14">
+    <aside className="w-24 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col items-center justify-between pt-14 pb-6">
       <nav className="flex flex-col items-center gap-3 w-full px-3">
-        {NAV.map(({ id, label, Icon }) => {
-          const active = route === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onNavigate(id)}
-              className={`flex flex-col items-center justify-center gap-1 w-full min-h-16 rounded-2xl py-3 transition-colors ${
-                active
-                  ? "bg-violet-100 text-violet-700"
-                  : "text-gray-500 hover:bg-violet-50 hover:text-violet-600"
-              }`}
-            >
-              <Icon />
-              <span className="text-[11px] font-semibold">{label}</span>
-            </button>
-          );
-        })}
+        {NAV.map((item) => (
+          <NavButton
+            key={item.id}
+            item={item}
+            active={route === item.id}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </nav>
+
+      <nav className="w-full px-3">
+        <NavButton
+          item={AUTH_NAV}
+          active={route === AUTH_NAV.id}
+          onNavigate={onNavigate}
+        />
       </nav>
     </aside>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ApplianceSelect from "../components/ApplianceSelect";
 import AgentReasoning from "../components/AgentReasoning";
+import { IconHome } from "../components/Sidebar";
 import { recommendations as mockRecommendations } from "../services/mockData";
 import {
   SHOW_API_ERRORS,
@@ -115,7 +116,6 @@ function AIRecommendTab({ selected, onChange, applianceNames }) {
 
       {result && (
         <>
-          <AgentReasoning steps={result.agent_steps} />
           <div className="card">
             <p className="card-title mb-2">추천 결과</p>
             {result.items.length > 0 ? (
@@ -126,6 +126,7 @@ function AIRecommendTab({ selected, onChange, applianceNames }) {
               <p className="text-sm text-gray-500">선택한 가전에 대한 추천 결과가 없습니다.</p>
             )}
           </div>
+          <AgentReasoning steps={result.agent_steps} />
         </>
       )}
     </div>
@@ -191,9 +192,7 @@ function RecommendPage({
           onClick={() => onNavigate?.("home")}
           className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors"
         >
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M7.72 12.53a.75.75 0 010-1.06l7.5-7.5a.75.75 0 111.06 1.06L9.31 12l6.97 6.97a.75.75 0 11-1.06 1.06l-7.5-7.5z" clipRule="evenodd" />
-          </svg>
+          <IconHome />
         </button>
 
         {/* 토글 탭 */}

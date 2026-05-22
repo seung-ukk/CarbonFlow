@@ -103,7 +103,6 @@ function SuggestionCard({ topPick, onNavigate }) {
           </svg>
           <span className="text-sm font-bold text-gray-700">오늘의 AI 추천</span>
         </div>
-        <button className="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
       </div>
       <p className="text-sm text-gray-600 mt-2">
         <span className="font-semibold text-gray-800">{topPick.appliance_kr} 사용 추천</span>

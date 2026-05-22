@@ -43,7 +43,7 @@ function AgentReasoning({ steps }) {
         ))}
       </div>
     </section>
-  );
+  );                                                    
 }
 
 export default AgentReasoning;
