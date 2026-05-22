@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
 from typing import List
+from src.schemas.carbon import CarbonIntensityResponse
 
 from src.database.connection import get_db, JSONDatabase
 from src.schemas.appliance import ApplianceSchema
@@ -24,7 +25,12 @@ def get_appliance(appliance_id: str):
 
 
 # [2] 탄소강도 도메인 API
-@router.get("/carbon/intensity", tags=["Carbon"])
+@router.get(
+        "/carbon/intensity",
+        response_model=CarbonIntensityResponse,
+        tags=["Carbon"],
+        summary="실시간 탄소 집약도 및 24시간 예측 데이터 조회"
+)
 async def get_carbon_intensity(db: aiosqlite.Connection = Depends(get_db)):
     """실시간 탄소 집약도 및 24시간 예측 데이터 반환 엔드포인트"""
     current_data = CarbonCalculator.get_current_carbon()
