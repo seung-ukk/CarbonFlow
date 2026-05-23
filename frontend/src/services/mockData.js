@@ -1,34 +1,28 @@
 export const currentCarbon = {
-  updated_at: "2026-05-19T14:30:00+09:00",
-  carbon_intensity: 412,
-  level: "high",
-  renewable_ratio: 8.3,
-  coal_ratio: 35.2,
+  carbon_intensity: 437.65,
+  status: "나쁨",
+  unit: "gCO2/kWh",
 };
 
 export const forecastData = {
-  best_window: {
-    start: "2026-05-20T01:00:00+09:00",
-    end: "2026-05-20T03:00:00+09:00",
+  current: {
+    carbon_intensity: 437.65,
+    status: "나쁨",
+    unit: "gCO2/kWh",
   },
-  worst_window: {
-    start: "2026-05-19T19:00:00+09:00",
-    end: "2026-05-19T21:00:00+09:00",
-  },
-
-  forecasts: [
-    { hour: "2026-05-19T15:00:00+09:00", carbon_intensity: 390, level: "medium" },
-    { hour: "2026-05-19T16:00:00+09:00", carbon_intensity: 340, level: "medium" },
-    { hour: "2026-05-19T17:00:00+09:00", carbon_intensity: 300, level: "medium" },
-    { hour: "2026-05-19T18:00:00+09:00", carbon_intensity: 480, level: "high" },
-    { hour: "2026-05-19T19:00:00+09:00", carbon_intensity: 520, level: "high" },
-    { hour: "2026-05-19T20:00:00+09:00", carbon_intensity: 510, level: "high" },
-    { hour: "2026-05-19T21:00:00+09:00", carbon_intensity: 460, level: "high" },
-    { hour: "2026-05-19T22:00:00+09:00", carbon_intensity: 400, level: "medium" },
-    { hour: "2026-05-19T23:00:00+09:00", carbon_intensity: 360, level: "medium" },
-    { hour: "2026-05-20T00:00:00+09:00", carbon_intensity: 320, level: "medium" },
-    { hour: "2026-05-20T01:00:00+09:00", carbon_intensity: 290, level: "low" },
-    { hour: "2026-05-20T02:00:00+09:00", carbon_intensity: 270, level: "low" },
+  forecast: [
+    { time: "15:00", carbon_intensity: 390 },
+    { time: "16:00", carbon_intensity: 340 },
+    { time: "17:00", carbon_intensity: 300 },
+    { time: "18:00", carbon_intensity: 480 },
+    { time: "19:00", carbon_intensity: 520 },
+    { time: "20:00", carbon_intensity: 510 },
+    { time: "21:00", carbon_intensity: 460 },
+    { time: "22:00", carbon_intensity: 400 },
+    { time: "23:00", carbon_intensity: 360 },
+    { time: "00:00", carbon_intensity: 320 },
+    { time: "01:00", carbon_intensity: 290 },
+    { time: "02:00", carbon_intensity: 270 },
   ],
 };
 

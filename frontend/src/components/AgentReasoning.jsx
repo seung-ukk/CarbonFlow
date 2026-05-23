@@ -5,10 +5,12 @@ function AgentReasoning({ steps }) {
 
   useEffect(() => {
     if (!steps || steps.length === 0) {
-      setVisibleCount(0);
       return;
     }
-    setVisibleCount(0);
+
+    const resetTimer = setTimeout(() => {
+      setVisibleCount(0);
+    }, 0);
 
     const timer = setInterval(() => {
       setVisibleCount((prev) => {
@@ -20,7 +22,10 @@ function AgentReasoning({ steps }) {
       });
     }, 700);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(resetTimer);
+      clearInterval(timer);
+    };
   }, [steps]);
 
   if (!steps || steps.length === 0) return null;

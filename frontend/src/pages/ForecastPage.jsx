@@ -1,29 +1,37 @@
 import { useEffect, useState } from "react";
 import ForecastChart from "../components/ForecastChart";
 import { forecastData } from "../services/mockData";
-import { SHOW_API_ERRORS, getApiErrorMessage, getForecast } from "../services/api";
+import {
+  REFRESH_INTERVAL_MS,
+  SHOW_API_ERRORS,
+  getApiErrorMessage,
+  getForecast,
+} from "../services/api";
 
-function formatRange(startIso, endIso) {
-  if (!startIso || !endIso) return "-";
-  const hh = (d) => `${new Date(d).getHours().toString().padStart(2, "0")}:00`;
-  return `${hh(startIso)} - ${hh(endIso)}`;
+function addOneHour(time) {
+  if (!time) return "";
+  const [hour = "0"] = time.split(":");
+  return `${((Number(hour) + 1) % 24).toString().padStart(2, "0")}:00`;
 }
 
-function getWorstWindow(forecasts) {
+function formatRange(start, end) {
+  if (!start || !end) return "-";
+  return `${start} - ${end}`;
+}
+
+function getIntensityWindow(forecasts, compare) {
   if (!forecasts || forecasts.length === 0) return null;
 
-  const worst = forecasts.reduce((max, item) =>
-    item.carbon_intensity > max.carbon_intensity ? item : max
+  const target = forecasts.reduce((selected, item) =>
+    compare(item.carbon_intensity, selected.carbon_intensity) ? item : selected
   );
-  const end = new Date(worst.hour);
-  end.setHours(end.getHours() + 1);
-  return { start: worst.hour, end: end.toISOString() };
+  return { start: target.time, end: addOneHour(target.time) };
 }
 
 const STAT_CARDS = (best, worst, minIntensity) => [
   {
     label: "최적 시간대",
-    value: formatRange(best.start, best.end),
+    value: formatRange(best?.start, best?.end),
     color: "text-green-600",
     bg: "bg-green-50",
     change: "탄소 절감 최적",
@@ -40,7 +48,7 @@ const STAT_CARDS = (best, worst, minIntensity) => [
   },
   {
     label: "주의 시간대",
-    value: formatRange(worst.start, worst.end),
+    value: formatRange(worst?.start, worst?.end),
     color: "text-red-500",
     bg: "bg-red-50",
     change: "탄소 배출 최고",
@@ -106,15 +114,23 @@ function ForecastPage() {
     };
 
     loadForecast();
+    const refreshTimer = setInterval(loadForecast, REFRESH_INTERVAL_MS);
 
     return () => {
       ignore = true;
+      clearInterval(refreshTimer);
     };
   }, []);
 
-  const forecasts = forecast.forecasts ?? [];
-  const bestWindow = forecast.best_window;
-  const worstWindow = forecast.worst_window ?? getWorstWindow(forecasts);
+  const forecasts = forecast.forecast ?? [];
+  const bestWindow = getIntensityWindow(
+    forecasts,
+    (current, selected) => current < selected
+  );
+  const worstWindow = getIntensityWindow(
+    forecasts,
+    (current, selected) => current > selected
+  );
   const minIntensity =
     forecasts.length > 0
       ? Math.min(...forecasts.map((f) => f.carbon_intensity))

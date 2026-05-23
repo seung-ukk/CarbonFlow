@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import CarbonGauge from "../components/CarbonGauge";
 import { currentCarbon as mockCurrentCarbon, recommendations as mockRecommendations } from "../services/mockData";
 import {
+  REFRESH_INTERVAL_MS,
   SHOW_API_ERRORS,
   getApiErrorMessage,
   getCurrentCarbon,
   getRecommendations,
 } from "../services/api";
 
-function ChatPanel({ onNavigate, topPick }) {
+function ChatPanel({ topPick }) {
   const optimalHour = new Date(topPick.optimal_time).getHours();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([
@@ -161,9 +162,11 @@ function HomePage({ onNavigate }) {
     };
 
     loadHomeData();
+    const refreshTimer = setInterval(loadHomeData, REFRESH_INTERVAL_MS);
 
     return () => {
       ignore = true;
+      clearInterval(refreshTimer);
     };
   }, []);
 
@@ -195,15 +198,15 @@ function HomePage({ onNavigate }) {
         <div className="flex w-[45%] min-w-0 flex-col gap-4">
           <CarbonGauge
             intensity={currentCarbon.carbon_intensity}
-            renewable={currentCarbon.renewable_ratio}
-            level={currentCarbon.level}
+            status={currentCarbon.status}
+            unit={currentCarbon.unit}
           />
           <SuggestionCard topPick={topPick} onNavigate={onNavigate} />
         </div>
 
         {/* 오른쪽 패널: 챗봇 */}
         <div className="flex min-w-0 flex-1">
-          <ChatPanel onNavigate={onNavigate} topPick={topPick} />
+          <ChatPanel topPick={topPick} />
         </div>
       </div>
     </div>

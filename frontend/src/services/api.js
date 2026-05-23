@@ -5,6 +5,7 @@ const api = axios.create({
 });
 
 export const SHOW_API_ERRORS = false;
+export const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
 const unwrap = (response) => response.data?.data ?? response.data;
 

@@ -1,25 +1,25 @@
-function CarbonGauge({ intensity, renewable, level }) {
+function CarbonGauge({ intensity, status, unit = "gCO2/kWh" }) {
   const maxIntensity = 600;
   const ratio = Math.min(Math.max(intensity / maxIntensity, 0), 1);
   const needleAngle = -90 + ratio * 180;
 
-  const levelTextMap = {
-    low: {
-      label: "낮음",
+  const statusTextMap = {
+    좋음: {
+      label: "좋음",
       color: "text-green-600",
       bg: "bg-green-50",
       border: "border-green-100",
       status: "지금은 전기가 비교적 친환경적입니다.",
     },
-    medium: {
+    보통: {
       label: "보통",
       color: "text-yellow-600",
       bg: "bg-yellow-50",
       border: "border-yellow-100",
       status: "현재 전력망은 보통 수준입니다.",
     },
-    high: {
-      label: "높음",
+    나쁨: {
+      label: "나쁨",
       color: "text-red-600",
       bg: "bg-red-50",
       border: "border-red-100",
@@ -27,7 +27,7 @@ function CarbonGauge({ intensity, renewable, level }) {
     },
   };
 
-  const currentLevel = levelTextMap[level] ?? levelTextMap.medium;
+  const currentLevel = statusTextMap[status] ?? statusTextMap.보통;
 
   return (
     <section className="card">
@@ -75,26 +75,19 @@ function CarbonGauge({ intensity, renewable, level }) {
               style={{ transform: `rotate(${needleAngle}deg)` }}
             />
           </div>
-          <div className="absolute left-1/2 bottom-[42px] h-5 w-5 -translate-x-1/2 rounded-full border-4 border-white bg-gray-900 shadow" />
-
           <div className="absolute inset-x-0 bottom-0 text-center">
             <p className="text-5xl font-extrabold text-gray-900 leading-none">{intensity}</p>
-            <p className="mt-1 text-xs font-semibold text-gray-500">gCO₂/kWh</p>
+            <p className="mt-1 text-xs font-semibold text-gray-500">{unit}</p>
           </div>
         </div>
 
         <div className="flex w-full max-w-[360px] justify-between text-xs font-semibold text-gray-400">
-          <span>낮음</span>
+          <span>좋음</span>
           <span>보통</span>
-          <span>높음</span>
+          <span>나쁨</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mt-7">
-          <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
-            <p className="label-text">재생에너지 비중</p>
-            <p className="text-3xl font-extrabold mt-2 text-green-700">{renewable}%</p>
-          </div>
-
+        <div className="w-full mt-7">
           <div className={`rounded-2xl border p-4 ${currentLevel.bg} ${currentLevel.border}`}>
             <p className="label-text">현재 상태</p>
             <p className={`mt-2 text-sm font-bold leading-snug ${currentLevel.color}`}>

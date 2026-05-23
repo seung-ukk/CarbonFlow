@@ -6,7 +6,6 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   ReferenceDot,
-  Tooltip,
 } from "recharts";
 
 function ForecastChart({ data }) {
@@ -40,10 +39,10 @@ function ForecastChart({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
 
             <XAxis
-              dataKey="hour"
+              dataKey="time"
               stroke="#e5e7eb"
               tick={{ fill: "#9ca3af", fontSize: 11 }}
-              tickFormatter={(value) => `${new Date(value).getHours()}:00`}
+              tickFormatter={(value) => value}
             />
 
             <YAxis
@@ -71,7 +70,7 @@ function ForecastChart({ data }) {
             />
 
             <ReferenceDot
-              x={minItem.hour}
+              x={minItem.time}
               y={minItem.carbon_intensity}
               r={7}
               fill="#16a34a"
@@ -83,7 +82,7 @@ function ForecastChart({ data }) {
       </div>
 
       <p className="mt-3 text-green-600 font-bold text-sm">
-        최저 탄소강도: {new Date(minItem.hour).getHours()}:00 &bull;{" "}
+        최저 탄소강도: {minItem.time} &bull;{" "}
         {minItem.carbon_intensity} gCO2/kWh
       </p>
     </section>
