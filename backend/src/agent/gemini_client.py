@@ -96,7 +96,7 @@ async def get_recommand_message(context: GenerateRecommandMsgCtx) -> str:
     instance = GeminiClient()
     for i in range(0, 3):
         try:
-            res = instance.generate_conversation_message(context)
+            res = await instance.generate_conversation_message(context)
             return res
         except RuntimeError as e:
             last_exc = e
