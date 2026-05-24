@@ -1,4 +1,8 @@
 # src/main.py
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
 from http.client import HTTPException
 import logging
 from contextlib import asynccontextmanager
@@ -15,6 +19,10 @@ from src.api.endpoints import router as api_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# GeminiClient 인스턴스 초기화 (애플리케이션 전역에서 재사용)
+base_dir = Path(__file__).resolve().parent.parent
+env_path = base_dir / ".env"
+load_dotenv(dotenv_path=env_path)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

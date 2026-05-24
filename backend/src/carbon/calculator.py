@@ -94,8 +94,8 @@ class CarbonCalculator:
         }
 
     @classmethod
-    def forecast_carbon_curve(cls) -> list:
-        """[버킷팅 알고리즘 완결판] 미래 24시간 곡선도 타깃 분 버킷에 맞춰 정밀하게 시뮬레이션합니다."""
+    def forecast_carbon_curve(cls) -> dict:  #리턴 타입을 구조적 dict로 변경
+        """[2번 과제 완결] 미래 24시간 곡선 시뮬레이션 및 프론트엔드용 요약 지표(최적/주의)를 통합 반환합니다."""
         try:
             df = cls._load_kpx_dataframe()
             forecast_list = []
@@ -137,7 +137,19 @@ class CarbonCalculator:
                     "level": level
                 })
                 
-            return forecast_list
+            # 생성된 24시간 배열 내에서 최적(Min)과 주의(Max) 지표 역산
+            if forecast_list:
+                min_item = min(forecast_list, key=lambda x: x["carbon_intensity"])
+                max_item = max(forecast_list, key=lambda x: x["carbon_intensity"])
+                
+                return {
+                    "forecasts": forecast_list,
+                    "min_carbon_intensity": min_item["carbon_intensity"],  # 최적 탄소강도 수치
+                    "max_carbon_hour": max_item["hour"],                    # 주의 시간대 타임스탬프
+                    "max_carbon_intensity": max_item["carbon_intensity"]
+                }
+            
+            return {"forecasts": [], "min_carbon_intensity": 0.0, "max_carbon_hour": "", "max_carbon_intensity": 0.0}
             
         except Exception as e:
             print(f"===> [Warning] 예측 곡선 생성 중 대피로 가동: {str(e)}")
@@ -154,7 +166,18 @@ class CarbonCalculator:
                     "carbon_intensity": round(base, 2),
                     "level": level
                 })
-            return forecast_list
+                
+            min_item = min(forecast_list, key=lambda x: x["carbon_intensity"])
+            max_item = max(forecast_list, key=lambda x: x["carbon_intensity"])
+            
+            return {
+                "forecasts": forecast_list,
+                "min_carbon_intensity": min_item["carbon_intensity"],
+                "max_carbon_hour": max_item["hour"],
+                "max_carbon_intensity": max_item["carbon_intensity"]
+            }
+            
+    
         
     @classmethod
     def find_optimal_window(cls, forecasts: list) -> dict:
