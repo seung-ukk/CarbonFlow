@@ -4,46 +4,53 @@ import AgentReasoning from "../components/AgentReasoning";
 import { IconHome } from "../components/Sidebar";
 import { recommendations as mockRecommendations } from "../services/mockData";
 import {
+  fallbackAppliances,
+  normalizeAgentRecommendation,
+  normalizeReasoningLogs,
+} from "../services/recommendationMapper";
+import {
   SHOW_API_ERRORS,
   getApiErrorMessage,
+  getAgentRecommendation,
   getAppliances,
-  getRecommendations,
+  getCurrentCarbon,
 } from "../services/api";
 
-const APPLIANCE_ICONS = {
-  세탁기: "🫧",
-  건조기: "🌀",
-  식기세척기: "🍽",
-  에어컨: "❄️",
-  "전기차 충전기": "⚡",
+const APPLIANCE_BADGES = {
+  washing_machine: "세",
+  clothes_dryer: "건",
+  dishwasher: "식",
 };
+
+function getHourLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--:--";
+  return `${date.getHours().toString().padStart(2, "0")}:00`;
+}
 
 function RecommendListItem({ item }) {
   const [liked, setLiked] = useState(false);
-  const optimalDate = new Date(item.optimal_time);
-  const timeLabel = `${optimalDate.getHours().toString().padStart(2, "0")}:00`;
+  const timeLabel = getHourLabel(item.optimal_time);
 
   return (
     <div className="flex items-center gap-4 py-4 border-b border-gray-100 last:border-0">
-      {/* 아이콘 썸네일 */}
-      <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-2xl shrink-0">
-        {APPLIANCE_ICONS[item.appliance_kr] ?? "🏠"}
+      <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600 shrink-0">
+        {APPLIANCE_BADGES[item.appliance] ?? "가전"}
       </div>
 
-      {/* 텍스트 */}
       <div className="flex-1 min-w-0">
         <p className="font-bold text-gray-900 text-sm">{item.appliance_kr}</p>
         <p className="text-xs text-gray-500 mt-0.5">
-          CO₂ {item.saving_percent}% 절감 &bull; 최적 {timeLabel}
+          CO2 {item.saving_percent}% 절감 &bull; 최적 {timeLabel}
         </p>
         <p className="text-xs text-gray-600 mt-1 leading-relaxed line-clamp-2">{item.message}</p>
       </div>
 
-      {/* 하트 버튼 */}
       <button
         type="button"
         onClick={() => setLiked((v) => !v)}
         className="shrink-0 p-1 text-gray-300 hover:text-red-400 transition-colors"
+        aria-label="추천 저장"
       >
         <svg
           viewBox="0 0 24 24"
@@ -59,29 +66,52 @@ function RecommendListItem({ item }) {
   );
 }
 
-function AIRecommendTab({ selected, onChange, applianceNames }) {
+function AIRecommendTab({ selected, onChange, appliances }) {
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleRecommend = async () => {
+    const selectedAppliances = appliances.filter((appliance) =>
+      selected.includes(appliance.id)
+    );
+    if (selectedAppliances.length === 0) return;
+
     setIsLoading(true);
     setResult(null);
     setErrorMessage("");
 
     try {
-      const recommendations = await getRecommendations();
-      const items = recommendations?.items ?? [];
-      const filtered = items.filter((item) =>
-        selected.includes(item.appliance_kr)
+      const currentCarbon = await getCurrentCarbon();
+      const recommendationResults = await Promise.all(
+        selectedAppliances.map(async (appliance) => ({
+          appliance,
+          recommendation: await getAgentRecommendation(appliance.id),
+        }))
       );
+
       setResult({
-        items: filtered.length > 0 ? filtered : items,
-        agent_steps: recommendations?.agent_steps ?? [],
+        items: recommendationResults.map(({ appliance, recommendation }) =>
+          normalizeAgentRecommendation({
+            appliance,
+            currentCarbon,
+            recommendation,
+          })
+        ),
+        agent_steps: recommendationResults
+          .flatMap(({ appliance, recommendation }) =>
+            normalizeReasoningLogs(recommendation?.reasoning_logs).map(
+              (step) => ({
+                ...step,
+                tool: `${appliance.name} · ${step.tool}`,
+              })
+            )
+          )
+          .map((step, index) => ({ ...step, step: index + 1 })),
       });
     } catch (error) {
       const filtered = mockRecommendations.items.filter((item) =>
-        selected.includes(item.appliance_kr)
+        selectedAppliances.some((appliance) => appliance.name === item.appliance_kr)
       );
       setResult({
         items: filtered.length > 0 ? filtered : mockRecommendations.items.slice(0, 1),
@@ -105,7 +135,7 @@ function AIRecommendTab({ selected, onChange, applianceNames }) {
         onRecommend={handleRecommend}
         isLoading={isLoading}
         layout="vertical"
-        appliances={applianceNames}
+        appliances={appliances}
       />
 
       {SHOW_API_ERRORS && errorMessage && (
@@ -133,7 +163,7 @@ function AIRecommendTab({ selected, onChange, applianceNames }) {
   );
 }
 
-function ApplianceTab({ favoriteAppliances, onFavoriteAppliancesChange, applianceNames }) {
+function ApplianceTab({ favoriteAppliances, onFavoriteAppliancesChange, appliances }) {
   return (
     <div className="space-y-4">
       <ApplianceSelect
@@ -141,7 +171,7 @@ function ApplianceTab({ favoriteAppliances, onFavoriteAppliancesChange, applianc
         selected={favoriteAppliances}
         onChange={onFavoriteAppliancesChange}
         layout="vertical"
-        appliances={applianceNames}
+        appliances={appliances}
       />
     </div>
   );
@@ -154,7 +184,7 @@ function RecommendPage({
 }) {
   const [tab, setTab] = useState("ai");
   const [selected, setSelected] = useState([]);
-  const [applianceNames, setApplianceNames] = useState(undefined);
+  const [appliances, setAppliances] = useState(fallbackAppliances);
   const [applianceError, setApplianceError] = useState("");
 
   useEffect(() => {
@@ -162,14 +192,15 @@ function RecommendPage({
 
     const loadAppliances = async () => {
       try {
-        const appliances = await getAppliances();
+        const data = await getAppliances();
         if (ignore) return;
-        setApplianceNames(
-          Array.isArray(appliances) ? appliances.map((item) => item.name) : undefined
+        setAppliances(
+          Array.isArray(data) && data.length > 0 ? data : fallbackAppliances
         );
         setApplianceError("");
       } catch (error) {
         if (ignore) return;
+        setAppliances(fallbackAppliances);
         setApplianceError(
           getApiErrorMessage(error, "가전제품 목록을 불러오지 못했습니다.")
         );
@@ -185,17 +216,16 @@ function RecommendPage({
 
   return (
     <div>
-      {/* 뒤로 가기 + 탭 */}
       <div className="flex items-center gap-4 mb-6">
         <button
           type="button"
           onClick={() => onNavigate?.("home")}
           className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors"
+          aria-label="대시보드로 이동"
         >
           <IconHome />
         </button>
 
-        {/* 토글 탭 */}
         <div className="flex gap-2">
           <button
             type="button"
@@ -237,13 +267,13 @@ function RecommendPage({
         <AIRecommendTab
           selected={selected}
           onChange={setSelected}
-          applianceNames={applianceNames}
+          appliances={appliances}
         />
       ) : (
         <ApplianceTab
           favoriteAppliances={favoriteAppliances}
           onFavoriteAppliancesChange={onFavoriteAppliancesChange}
-          applianceNames={applianceNames}
+          appliances={appliances}
         />
       )}
     </div>

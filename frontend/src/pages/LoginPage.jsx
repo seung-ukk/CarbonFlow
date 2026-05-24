@@ -42,7 +42,7 @@ function LoginPage({ onNavigate }) {
     <div className="max-w-md">
       <header className="mb-6">
         <h1 className="page-title">LOGIN</h1>
-        <p className="page-subtitle">SQLite에 미리 등록된 테스트 계정으로 로그인합니다.</p>
+        <p className="page-subtitle">테스트 계정으로 로그인합니다.</p>
       </header>
 
       <form onSubmit={handleSubmit} className="card space-y-4">

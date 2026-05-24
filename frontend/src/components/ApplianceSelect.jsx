@@ -16,12 +16,16 @@ function ApplianceSelect({
   isLoading = false,
   layout = "grid",
 }) {
+  const getValue = (item) => (typeof item === "string" ? item : item.id);
+  const getLabel = (item) => (typeof item === "string" ? item : item.name);
+
   const toggle = (item) => {
     if (!onChange) return;
-    if (selected.includes(item)) {
-      onChange(selected.filter((v) => v !== item));
+    const value = getValue(item);
+    if (selected.includes(value)) {
+      onChange(selected.filter((v) => v !== value));
     } else {
-      onChange([...selected, item]);
+      onChange([...selected, value]);
     }
   };
 
@@ -36,17 +40,22 @@ function ApplianceSelect({
             : "grid grid-cols-1 md:grid-cols-2 gap-3"
         }
       >
-        {appliances.map((item) => (
-          <label key={item} className="select-card">
-            <input
-              type="checkbox"
-              className="w-4 h-4 accent-violet-600 rounded"
-              checked={selected.includes(item)}
-              onChange={() => toggle(item)}
-            />
-            <span className="font-semibold text-sm text-gray-800">{item}</span>
-          </label>
-        ))}
+        {appliances.map((item) => {
+          const value = getValue(item);
+          const label = getLabel(item);
+
+          return (
+            <label key={value} className="select-card">
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-violet-600 rounded"
+                checked={selected.includes(value)}
+                onChange={() => toggle(item)}
+              />
+              <span className="font-semibold text-sm text-gray-800">{label}</span>
+            </label>
+          );
+        })}
       </div>
 
       {onRecommend && (

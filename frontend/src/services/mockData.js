@@ -1,6 +1,8 @@
 export const currentCarbon = {
   carbon_intensity: 437.65,
   status: "나쁨",
+  renewable_ratio: 8.3,
+  coal_ratio: 35.2,
   unit: "gCO2/kWh",
 };
 
@@ -8,6 +10,8 @@ export const forecastData = {
   current: {
     carbon_intensity: 437.65,
     status: "나쁨",
+    renewable_ratio: 8.3,
+    coal_ratio: 35.2,
     unit: "gCO2/kWh",
   },
   forecast: [

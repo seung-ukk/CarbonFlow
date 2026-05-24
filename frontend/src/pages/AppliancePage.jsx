@@ -1,4 +1,34 @@
+import { useEffect, useState } from "react";
+import { getAppliances } from "../services/api";
+import {
+  fallbackAppliances,
+  getApplianceLabel,
+} from "../services/recommendationMapper";
+
 function AppliancePage({ favoriteAppliances = [], onFavoriteAppliancesChange }) {
+  const [appliances, setAppliances] = useState(fallbackAppliances);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadAppliances = async () => {
+      try {
+        const data = await getAppliances();
+        if (!ignore && Array.isArray(data) && data.length > 0) {
+          setAppliances(data);
+        }
+      } catch {
+        if (!ignore) setAppliances(fallbackAppliances);
+      }
+    };
+
+    loadAppliances();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   const removeFavorite = (item) => {
     onFavoriteAppliancesChange?.(
       favoriteAppliances.filter((appliance) => appliance !== item)
@@ -27,7 +57,9 @@ function AppliancePage({ favoriteAppliances = [], onFavoriteAppliancesChange }) 
                 key={item}
                 className="flex items-center justify-between rounded-2xl border border-violet-100 bg-violet-50/60 px-4 py-3"
               >
-                <span className="font-semibold text-sm text-gray-800">{item}</span>
+                <span className="font-semibold text-sm text-gray-800">
+                  {getApplianceLabel(appliances, item)}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeFavorite(item)}

@@ -7,14 +7,13 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/appliances": {
+    "/api/appliances": {
       "get": {
         "tags": [
           "Appliances"
         ],
         "summary": "Get All Appliances",
-        "description": "프론트엔드가 가전 목록을 조회해가는 완벽하게 검증된 엔드포인트",
-        "operationId": "get_all_appliances_appliances_get",
+        "operationId": "get_all_appliances_api_appliances_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -25,7 +24,7 @@
                     "$ref": "#/components/schemas/ApplianceSchema"
                   },
                   "type": "array",
-                  "title": "Response Get All Appliances Appliances Get"
+                  "title": "Response Get All Appliances Api Appliances Get"
                 }
               }
             }
@@ -33,14 +32,13 @@
         }
       }
     },
-    "/appliances/{appliance_id}": {
+    "/api/appliances/{appliance_id}": {
       "get": {
         "tags": [
           "Appliances"
         ],
         "summary": "Get Appliance",
-        "description": "특정 가전제품 정보 상세 조회",
-        "operationId": "get_appliance_appliances__appliance_id__get",
+        "operationId": "get_appliance_api_appliances__appliance_id__get",
         "parameters": [
           {
             "name": "appliance_id",
@@ -76,21 +74,20 @@
         }
       }
     },
-    "/carbon/intensity": {
+    "/api/carbon/current": {
       "get": {
         "tags": [
           "Carbon"
         ],
-        "summary": "실시간 탄소 집약도 및 24시간 예측 데이터 조회",
-        "description": "실시간 탄소 집약도 및 24시간 예측 데이터 반환 엔드포인트",
-        "operationId": "get_carbon_intensity_carbon_intensity_get",
+        "summary": "현재 실시간 탄소 지수 조회",
+        "operationId": "get_current_carbon_intensity_api_carbon_current_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CarbonIntensityResponse"
+                  "$ref": "#/components/schemas/CurrentCarbonResponse"
                 }
               }
             }
@@ -98,14 +95,34 @@
         }
       }
     },
-    "/agent/chat": {
+    "/api/carbon/forecast": {
+      "get": {
+        "tags": [
+          "Carbon"
+        ],
+        "summary": "향후 예측 탄소 곡선 조회",
+        "operationId": "get_carbon_forecast_api_carbon_forecast_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastCarbonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/chat": {
       "post": {
         "tags": [
           "Agent"
         ],
         "summary": "Chat With Eco Agent",
-        "description": "서버 정상 가동 테스트를 위한 임시 에이전트 샌드박스 엔드포인트",
-        "operationId": "chat_with_eco_agent_agent_chat_post",
+        "operationId": "chat_with_eco_agent_api_agent_chat_post",
         "parameters": [
           {
             "name": "appliance_id",
@@ -219,76 +236,183 @@
         ],
         "title": "ApplianceSchema"
       },
-      "CarbonIntensityResponse": {
+      "BestWindow": {
         "properties": {
-          "current": {
-            "$ref": "#/components/schemas/CurrentCarbonResponse",
-            "description": "현재 실시간 탄소 데이터"
+          "start": {
+            "type": "string",
+            "title": "Start",
+            "description": "최적 구간 시작 시각 (ISO 8601)",
+            "example": "2026-05-24T01:00:00+09:00"
           },
-          "forecast": {
+          "end": {
+            "type": "string",
+            "title": "End",
+            "description": "최적 구간 종료 시각 (ISO 8601)",
+            "example": "2026-05-24T03:00:00+09:00"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "BestWindow"
+      },
+      "CurrentCarbonData": {
+        "properties": {
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "마지막 업데이트 시각 (ISO 8601 포맷)",
+            "example": "2026-05-24T12:00:00+09:00"
+          },
+          "carbon_intensity": {
+            "type": "number",
+            "title": "Carbon Intensity",
+            "description": "현재 기상청 날씨 연동 탄소강도 (gCO2/kWh)",
+            "example": 412
+          },
+          "level": {
+            "type": "string",
+            "title": "Level",
+            "description": "탄소 배출 등급 (low / medium / high)",
+            "example": "high"
+          },
+          "renewable_ratio": {
+            "type": "number",
+            "title": "Renewable Ratio",
+            "description": "현재 전력망 신재생에너지 발전 비중 %",
+            "example": 8.3
+          },
+          "coal_ratio": {
+            "type": "number",
+            "title": "Coal Ratio",
+            "description": "현재 전력망 석탄 화력발전 비중 %",
+            "example": 35.2
+          }
+        },
+        "type": "object",
+        "required": [
+          "updated_at",
+          "carbon_intensity",
+          "level",
+          "renewable_ratio",
+          "coal_ratio"
+        ],
+        "title": "CurrentCarbonData"
+      },
+      "CurrentCarbonResponse": {
+        "properties": {
+          "status": {
+            "type": "integer",
+            "title": "Status",
+            "description": "HTTP 상태 코드 규칙",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "응답 메시지",
+            "example": "조회 성공"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentCarbonData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "CurrentCarbonResponse"
+      },
+      "ForecastCarbonResponse": {
+        "properties": {
+          "status": {
+            "type": "integer",
+            "title": "Status",
+            "description": "HTTP 상태 코드 규칙",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "응답 메시지",
+            "example": "조회 성공"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "ForecastCarbonResponse"
+      },
+      "ForecastData": {
+        "properties": {
+          "best_window": {
+            "$ref": "#/components/schemas/BestWindow",
+            "description": "차트 시각화용 최적 가동 시간대 정보"
+          },
+          "forecasts": {
             "items": {
               "$ref": "#/components/schemas/ForecastItem"
             },
             "type": "array",
-            "title": "Forecast",
-            "description": "향후 24시간 예측 추이 데이터 리스트"
+            "title": "Forecasts",
+            "description": "12시간 탄소 예측 곡선 데이터 배열"
           }
         },
         "type": "object",
         "required": [
-          "current",
-          "forecast"
+          "best_window",
+          "forecasts"
         ],
-        "title": "CarbonIntensityResponse"
-      },
-      "CurrentCarbonResponse": {
-        "properties": {
-          "carbon_intensity": {
-            "type": "number",
-            "title": "Carbon Intensity",
-            "description": "현재 기상청 실황 날씨 버프가 반영된 실시간 탄소강도 (gCO2/kWh)",
-            "example": 320.5
-          },
-          "status": {
-            "type": "string",
-            "title": "Status",
-            "description": "탄소 효율 등급 (좋음/보통/나쁨)",
-            "example": "좋음"
-          },
-          "unit": {
-            "type": "string",
-            "title": "Unit",
-            "description": "데이터 단위",
-            "default": "gCO2/kWh",
-            "example": "gCO2/kWh"
-          }
-        },
-        "type": "object",
-        "required": [
-          "carbon_intensity",
-          "status"
-        ],
-        "title": "CurrentCarbonResponse"
+        "title": "ForecastData"
       },
       "ForecastItem": {
         "properties": {
-          "time": {
+          "hour": {
             "type": "string",
-            "title": "Time",
-            "description": "예측 타임라인 시간대 (현재 시각 기준 동적 정렬)",
-            "example": "15:00"
+            "title": "Hour",
+            "description": "예측 대상 시각 (ISO 8601)",
+            "example": "2026-05-24T15:00:00+09:00"
           },
           "carbon_intensity": {
             "type": "number",
             "title": "Carbon Intensity",
             "description": "해당 시간대의 예상 탄소강도 수치",
-            "example": 307.5
+            "example": 390
+          },
+          "level": {
+            "type": "string",
+            "title": "Level",
+            "description": "해당 시간대의 탄소 배출 등급 (low / medium / high)",
+            "example": "medium"
           }
         },
         "type": "object",
         "required": [
-          "time",
-          "carbon_intensity"
+          "hour",
+          "carbon_intensity",
+          "level"
         ],
         "title": "ForecastItem"
       },

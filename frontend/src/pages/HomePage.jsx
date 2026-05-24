@@ -2,20 +2,31 @@ import { useEffect, useState } from "react";
 import CarbonGauge from "../components/CarbonGauge";
 import { currentCarbon as mockCurrentCarbon, recommendations as mockRecommendations } from "../services/mockData";
 import {
+  fallbackAppliances,
+  normalizeAgentRecommendation,
+} from "../services/recommendationMapper";
+import {
   REFRESH_INTERVAL_MS,
   SHOW_API_ERRORS,
   getApiErrorMessage,
+  getAgentRecommendation,
+  getAppliances,
   getCurrentCarbon,
-  getRecommendations,
 } from "../services/api";
 
+function formatRecommendationTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--:--";
+  return `${date.getHours().toString().padStart(2, "0")}:00`;
+}
+
 function ChatPanel({ topPick }) {
-  const optimalHour = new Date(topPick.optimal_time).getHours();
+  const optimalTime = formatRecommendationTime(topPick.optimal_time);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([
     {
       role: "ai",
-      text: `안녕하세요! 오늘 탄소강도는 현재 높은 상태예요. ${topPick.appliance_kr}를 새벽 ${optimalHour}시에 사용하면 CO₂를 ${topPick.saving_percent}% 절감할 수 있습니다.`,
+      text: `안녕하세요! 오늘 탄소강도는 현재 높은 상태예요. ${topPick.appliance_kr}를 ${optimalTime}에 사용하면 CO₂를 ${topPick.saving_percent}% 절감할 수 있습니다.`,
     },
   ]);
 
@@ -69,18 +80,6 @@ function ChatPanel({ topPick }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
         />
-        <div className="flex items-center gap-2 text-gray-400">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 cursor-pointer hover:text-gray-600">
-            <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
-          </svg>
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 cursor-pointer hover:text-gray-600">
-            <path fillRule="evenodd" d="M14.447 3.027a.75.75 0 01.527.92l-4.5 16.5a.75.75 0 01-1.448-.394l4.5-16.5a.75.75 0 01.921-.526zM16.72 6.22a.75.75 0 011.06 0l3.75 3.75a.75.75 0 010 1.06l-3.75 3.75a.75.75 0 11-1.06-1.06L19.94 10.5l-3.22-3.22a.75.75 0 010-1.06zm-9.44 0a.75.75 0 010 1.06L4.06 10.5l3.22 3.22a.75.75 0 11-1.06 1.06L2.47 11.03a.75.75 0 010-1.06l3.75-3.75a.75.75 0 011.06 0z" clipRule="evenodd" />
-          </svg>
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 cursor-pointer hover:text-gray-600">
-            <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
-            <path d="M6 10.5a.75.75 0 01.75.75v1.5a4.5 4.5 0 009 0v-1.5a.75.75 0 011.5 0v1.5a6 6 0 01-5.25 5.954V21h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.796A6 6 0 015.25 12.75v-1.5A.75.75 0 016 10.5z" />
-          </svg>
-        </div>
         <button
           onClick={send}
           className="w-8 h-8 rounded-full bg-gray-200 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors text-gray-500"
@@ -107,7 +106,7 @@ function SuggestionCard({ topPick, onNavigate }) {
       </div>
       <p className="text-sm text-gray-600 mt-2">
         <span className="font-semibold text-gray-800">{topPick.appliance_kr} 사용 추천</span>
-        &nbsp;— 새벽 {new Date(topPick.optimal_time).getHours()}시에 사용하면 CO₂를{" "}
+        &nbsp;— {formatRecommendationTime(topPick.optimal_time)}에 사용하면 CO₂를{" "}
         <span className="text-green-600 font-bold">{topPick.saving_percent}%</span> 절감할 수 있어요.
       </p>
       <button
@@ -121,42 +120,114 @@ function SuggestionCard({ topPick, onNavigate }) {
   );
 }
 
+function DashboardLoadingState() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-[45%_1fr]">
+      <div className="flex flex-col gap-4">
+        <section className="card animate-pulse">
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="space-y-3">
+              <div className="h-5 w-32 rounded bg-gray-100" />
+              <div className="h-3 w-56 rounded bg-gray-100" />
+            </div>
+            <div className="h-7 w-16 rounded-full bg-gray-100" />
+          </div>
+          <div className="mx-auto h-[210px] max-w-[360px] rounded-t-full bg-gray-100" />
+          <div className="mt-7 h-20 rounded-2xl bg-gray-100" />
+        </section>
+
+        <section className="card animate-pulse">
+          <div className="h-4 w-28 rounded bg-gray-100" />
+          <div className="mt-4 h-4 w-full rounded bg-gray-100" />
+          <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
+          <div className="mt-5 h-9 w-28 rounded-xl bg-gray-100" />
+        </section>
+      </div>
+
+      <section className="card min-h-[420px] animate-pulse">
+        <div className="h-6 w-48 rounded bg-gray-100" />
+        <div className="mt-8 space-y-4">
+          <div className="h-16 w-4/5 rounded-2xl bg-gray-100" />
+          <div className="ml-auto h-14 w-2/3 rounded-2xl bg-gray-100" />
+          <div className="h-16 w-3/4 rounded-2xl bg-gray-100" />
+        </div>
+        <div className="mt-24 h-14 rounded-2xl bg-gray-100" />
+      </section>
+    </div>
+  );
+}
+
 function HomePage({ onNavigate }) {
-  const [currentCarbon, setCurrentCarbon] = useState(mockCurrentCarbon);
-  const [recommendations, setRecommendations] = useState(mockRecommendations);
+  const [currentCarbon, setCurrentCarbon] = useState(null);
+  const [recommendations, setRecommendations] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessages, setErrorMessages] = useState([]);
-  const topPick = recommendations.items?.[0] ?? mockRecommendations.items[0];
+  const topPick = recommendations?.items?.[0] ?? null;
 
   useEffect(() => {
     let ignore = false;
 
     const loadHomeData = async () => {
-      const [currentResult, recommendationResult] = await Promise.allSettled([
+      const [currentResult, appliancesResult] = await Promise.allSettled([
         getCurrentCarbon(),
-        getRecommendations(),
+        getAppliances(),
       ]);
 
       if (ignore) return;
 
       const nextErrors = [];
+      let nextCurrentCarbon = mockCurrentCarbon;
+      let nextRecommendations = mockRecommendations;
 
       if (currentResult.status === "fulfilled") {
-        setCurrentCarbon(currentResult.value ?? mockCurrentCarbon);
+        nextCurrentCarbon = currentResult.value ?? mockCurrentCarbon;
       } else {
         nextErrors.push(
-          getApiErrorMessage(currentResult.reason, "현재 탄소강도 데이터를 불러오지 못했습니다.")
+          getApiErrorMessage(
+            currentResult.reason,
+            "현재 탄소강도 데이터를 불러오지 못했습니다."
+          )
         );
       }
 
-      if (recommendationResult.status === "fulfilled") {
-        setRecommendations(recommendationResult.value ?? mockRecommendations);
+      if (appliancesResult.status === "fulfilled") {
+        const appliances =
+          Array.isArray(appliancesResult.value) && appliancesResult.value.length > 0
+            ? appliancesResult.value
+            : fallbackAppliances;
+        const topAppliance = appliances[0];
+
+        try {
+          const recommendation = await getAgentRecommendation(topAppliance.id);
+          if (!ignore) {
+            nextRecommendations = {
+              items: [
+                normalizeAgentRecommendation({
+                  appliance: topAppliance,
+                  currentCarbon: nextCurrentCarbon,
+                  recommendation,
+                }),
+              ],
+              agent_steps: [],
+            };
+          }
+        } catch (error) {
+          nextErrors.push(
+            getApiErrorMessage(error, "AI 추천 결과를 불러오지 못했습니다.")
+          );
+        }
       } else {
         nextErrors.push(
-          getApiErrorMessage(recommendationResult.reason, "AI 추천 결과를 불러오지 못했습니다.")
+          getApiErrorMessage(
+            appliancesResult.reason,
+            "가전제품 목록을 불러오지 못했습니다."
+          )
         );
       }
 
+      if (ignore) return;
+      setCurrentCarbon(nextCurrentCarbon);
+      setRecommendations(nextRecommendations);
       setErrorMessages(nextErrors);
       setIsLoading(false);
     };
@@ -170,6 +241,8 @@ function HomePage({ onNavigate }) {
     };
   }, []);
 
+  const hasDashboardData = Boolean(currentCarbon && topPick);
+
   return (
     <div className="min-h-[calc(100vh-4rem)]">
       <header className="mb-4">
@@ -177,7 +250,7 @@ function HomePage({ onNavigate }) {
         <p className="page-subtitle">현재 탄소강도와 AI 추천을 확인하세요.</p>
       </header>
 
-      {isLoading && (
+      {isLoading && !hasDashboardData && (
         <p className="mb-4 rounded-2xl bg-white border border-gray-100 px-4 py-3 text-sm text-gray-500">
           대시보드 데이터를 불러오는 중입니다...
         </p>
@@ -193,22 +266,41 @@ function HomePage({ onNavigate }) {
           </p>
         ))}
 
-      <div className="flex items-stretch gap-6">
+      {isLoading && !hasDashboardData ? (
+        <DashboardLoadingState />
+      ) : (
+        hasDashboardData && (
+          <div className="flex items-stretch gap-6">
         {/* 왼쪽 패널: 게이지 + 제안 카드 */}
         <div className="flex w-[45%] min-w-0 flex-col gap-4">
           <CarbonGauge
             intensity={currentCarbon.carbon_intensity}
             status={currentCarbon.status}
             unit={currentCarbon.unit}
+            renewableRatio={currentCarbon.renewable_ratio}
+            coalRatio={currentCarbon.coal_ratio}
           />
           <SuggestionCard topPick={topPick} onNavigate={onNavigate} />
         </div>
 
         {/* 오른쪽 패널: 챗봇 */}
         <div className="flex min-w-0 flex-1">
-          <ChatPanel topPick={topPick} />
+          <ChatPanel
+            key={`${topPick.appliance}-${topPick.optimal_time}`}
+            topPick={topPick}
+          />
         </div>
-      </div>
+          </div>
+        )
+      )}
+
+      {!isLoading && !hasDashboardData && (
+        <div className="card">
+          <p className="text-sm text-gray-500">
+            표시할 대시보드 데이터가 없습니다.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

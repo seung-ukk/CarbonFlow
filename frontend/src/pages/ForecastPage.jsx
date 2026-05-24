@@ -14,9 +14,45 @@ function addOneHour(time) {
   return `${((Number(hour) + 1) % 24).toString().padStart(2, "0")}:00`;
 }
 
+function formatTimeLabel(value) {
+  if (!value) return "";
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return `${date.getHours().toString().padStart(2, "0")}:00`;
+  }
+
+  return value;
+}
+
 function formatRange(start, end) {
   if (!start || !end) return "-";
-  return `${start} - ${end}`;
+  return `${formatTimeLabel(start)} - ${formatTimeLabel(end)}`;
+}
+
+function getDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function isWindowInForecastRange(window, forecasts) {
+  if (!window?.start || !window?.end || !forecasts?.length) return false;
+
+  const start = getDateTime(window.start);
+  const end = getDateTime(window.end);
+  const forecastTimes = forecasts
+    .map((item) => getDateTime(item.hour))
+    .filter((time) => time !== null);
+
+  if (start === null || end === null || forecastTimes.length === 0) {
+    return false;
+  }
+
+  const firstForecast = Math.min(...forecastTimes);
+  const lastForecastEnd = Math.max(...forecastTimes) + 60 * 60 * 1000;
+
+  return start >= firstForecast && end <= lastForecastEnd && start < end;
 }
 
 function getIntensityWindow(forecasts, compare) {
@@ -40,10 +76,10 @@ const STAT_CARDS = (best, worst, minIntensity) => [
   {
     label: "최저 탄소강도",
     value: `${minIntensity}`,
-    unit: "gCO₂/kWh",
+    unit: "gCO2/kWh",
     color: "text-gray-900",
     bg: "bg-blue-50",
-    change: "오늘의 최저",
+    change: "예측 구간 최저",
     up: true,
   },
   {
@@ -56,11 +92,11 @@ const STAT_CARDS = (best, worst, minIntensity) => [
   },
   {
     label: "예측 기간",
-    value: "24",
+    value: "12",
     unit: "시간",
     color: "text-violet-700",
     bg: "bg-violet-50",
-    change: "현재 ~ 내일 새벽",
+    change: "현재부터 12시간",
     up: null,
   },
 ];
@@ -123,10 +159,10 @@ function ForecastPage() {
   }, []);
 
   const forecasts = forecast.forecast ?? [];
-  const bestWindow = getIntensityWindow(
-    forecasts,
-    (current, selected) => current < selected
-  );
+  const bestWindow =
+    isWindowInForecastRange(forecast.best_window, forecasts)
+      ? forecast.best_window
+      : getIntensityWindow(forecasts, (current, selected) => current < selected);
   const worstWindow = getIntensityWindow(
     forecasts,
     (current, selected) => current > selected
@@ -139,11 +175,10 @@ function ForecastPage() {
 
   return (
     <div>
-      {/* 페이지 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">탄소강도 예측</h1>
-          <p className="page-subtitle">시간대별 탄소강도 변화와 최적 사용 시간대를 확인하세요.</p>
+          <p className="page-subtitle">12시간 탄소강도 변화와 최적 사용 시간대를 확인하세요.</p>
         </div>
       </div>
 
@@ -159,10 +194,8 @@ function ForecastPage() {
         </p>
       )}
 
-      {/* 차트 */}
       <ForecastChart data={forecasts} />
 
-      {/* 통계 카드 4개 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
         {stats.map((s) => (
           <StatCard key={s.label} {...s} />

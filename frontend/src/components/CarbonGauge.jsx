@@ -1,40 +1,73 @@
-function CarbonGauge({ intensity, status, unit = "gCO2/kWh" }) {
+const STATUS_TEXT_MAP = {
+  low: {
+    label: "좋음",
+    color: "text-green-600",
+    bg: "bg-green-50",
+    border: "border-green-100",
+    status: "지금은 전기가 비교적 친환경적입니다.",
+  },
+  medium: {
+    label: "보통",
+    color: "text-yellow-600",
+    bg: "bg-yellow-50",
+    border: "border-yellow-100",
+    status: "현재 전력망은 보통 수준입니다.",
+  },
+  high: {
+    label: "나쁨",
+    color: "text-red-600",
+    bg: "bg-red-50",
+    border: "border-red-100",
+    status: "지금은 탄소 배출이 많은 시간대입니다.",
+  },
+  좋음: {
+    label: "좋음",
+    color: "text-green-600",
+    bg: "bg-green-50",
+    border: "border-green-100",
+    status: "지금은 전기가 비교적 친환경적입니다.",
+  },
+  보통: {
+    label: "보통",
+    color: "text-yellow-600",
+    bg: "bg-yellow-50",
+    border: "border-yellow-100",
+    status: "현재 전력망은 보통 수준입니다.",
+  },
+  나쁨: {
+    label: "나쁨",
+    color: "text-red-600",
+    bg: "bg-red-50",
+    border: "border-red-100",
+    status: "지금은 탄소 배출이 많은 시간대입니다.",
+  },
+};
+
+function formatRatio(value) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return "-";
+  return `${numberValue.toFixed(1)}%`;
+}
+
+function CarbonGauge({
+  intensity,
+  status,
+  unit = "gCO2/kWh",
+  renewableRatio,
+  coalRatio,
+}) {
   const maxIntensity = 600;
-  const ratio = Math.min(Math.max(intensity / maxIntensity, 0), 1);
+  const numericIntensity = Number(intensity) || 0;
+  const ratio = Math.min(Math.max(numericIntensity / maxIntensity, 0), 1);
   const needleAngle = -90 + ratio * 180;
-
-  const statusTextMap = {
-    좋음: {
-      label: "좋음",
-      color: "text-green-600",
-      bg: "bg-green-50",
-      border: "border-green-100",
-      status: "지금은 전기가 비교적 친환경적입니다.",
-    },
-    보통: {
-      label: "보통",
-      color: "text-yellow-600",
-      bg: "bg-yellow-50",
-      border: "border-yellow-100",
-      status: "현재 전력망은 보통 수준입니다.",
-    },
-    나쁨: {
-      label: "나쁨",
-      color: "text-red-600",
-      bg: "bg-red-50",
-      border: "border-red-100",
-      status: "지금은 탄소 배출이 많은 시간대입니다.",
-    },
-  };
-
-  const currentLevel = statusTextMap[status] ?? statusTextMap.보통;
+  const currentLevel = STATUS_TEXT_MAP[status] ?? STATUS_TEXT_MAP.보통;
 
   return (
     <section className="card">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h2 className="card-title">현재 탄소강도</h2>
-          <p className="page-subtitle">초록에 가까울수록 사용하기 좋은 시간입니다.</p>
+          <p className="page-subtitle">초록색에 가까울수록 사용하기 좋은 시간입니다.</p>
         </div>
         <span
           className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${currentLevel.bg} ${currentLevel.border} ${currentLevel.color}`}
@@ -76,7 +109,9 @@ function CarbonGauge({ intensity, status, unit = "gCO2/kWh" }) {
             />
           </div>
           <div className="absolute inset-x-0 bottom-0 text-center">
-            <p className="text-5xl font-extrabold text-gray-900 leading-none">{intensity}</p>
+            <p className="text-5xl font-extrabold text-gray-900 leading-none">
+              {numericIntensity}
+            </p>
             <p className="mt-1 text-xs font-semibold text-gray-500">{unit}</p>
           </div>
         </div>
@@ -93,6 +128,21 @@ function CarbonGauge({ intensity, status, unit = "gCO2/kWh" }) {
             <p className={`mt-2 text-sm font-bold leading-snug ${currentLevel.color}`}>
               {currentLevel.status}
             </p>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
+              <p className="label-text">재생에너지 비중</p>
+              <p className="mt-2 text-xl font-extrabold text-green-700">
+                {formatRatio(renewableRatio)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="label-text">석탄 비중</p>
+              <p className="mt-2 text-xl font-extrabold text-gray-800">
+                {formatRatio(coalRatio)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
