@@ -7,12 +7,28 @@ from google.genai import types
 from pydantic import ValidationError
 from typing import Dict, Any, Optional
 
-from src.schemas.gemini import (
-    GeminiModel, GeminiContentReqT, GeminiResponseT,
-    GenerateRecommandMsgCtx, GenerateConversationdMsgCtx
-)
+# from src.schemas.gemini import (
+#     GeminiModel, GeminiContentReqT, GeminiResponseT,
+#     GenerateRecommandMsgCtx, GenerateConversationdMsgCtx
+# )
 from src.agent.get_gemiti_content import get_generate_recommand_message, get_generate_recommange_system_instruction
 
+from enum import Enum
+from pydantic import BaseModel
+from typing import Literal, Union, List, Dict, Any
+
+GeminiModel = Literal['gemini-3.1-pro-preview', 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite']
+GeminiContentReqT = List[Dict[str, Any]] | str
+GeminiResponseT = Union[BaseModel, Dict[Any, Any], Enum] | str
+
+class GenerateRecommandMsgCtx(BaseModel):
+    current_carbon_intensity: str
+    forecast_carbon_curve: str
+    calculated_appliance_emission: str
+    optimal_window: str
+
+class GenerateConversationdMsgCtx(BaseModel): ...
+    
 class GeminiClient:
     client: Optional[genai.Client] = None
 
