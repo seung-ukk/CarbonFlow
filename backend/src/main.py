@@ -1,9 +1,10 @@
 # src/main.py
+from http.client import HTTPException
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from pydantic import BaseModel
 from src.core.config import settings
 from src.database.connection import Database
 from src.api.endpoints import router as api_router
@@ -67,3 +68,24 @@ def read_root():
         "project": settings.PROJECT_NAME,
         "database_path": settings.SQLITE_PATH
     }
+
+class LoginRequest(BaseModel):
+    id: str
+    password: str
+
+# 2. /api 없이 다이렉트로 들어오는 /login 요청을 처리하는 엔드포인트 배치
+@app.post("/login", tags=["Auth"], summary="임시 데모용 루트 경로 Mock 로그인")
+async def root_login_mock(payload: LoginRequest):
+    if payload.id == "testuser" and payload.password == "password":
+        return {
+            "status": 200,
+            "message": "로그인 성공",
+            "data": {  # 프론트엔드의 unwrap() 구조 대응용 데이터 계층
+                "token": "mock-jwt-token",
+                "user": {"id": payload.id, "role": "user"}
+            }
+        }
+    raise HTTPException(
+        status_code=401,
+        detail="아이디 또는 비밀번호가 일치하지 않습니다."
+    )

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
 from typing import List
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 from src.database.connection import get_db, JSONDatabase
 from src.schemas.appliance import ApplianceSchema
@@ -11,8 +12,28 @@ from src.schemas.carbon import CurrentCarbonResponse, ForecastCarbonResponse
 
 router = APIRouter()
 
+class LoginRequest(BaseModel):
+    id: str        # 프론트의 { id: userId } 스펙과 매칭
+    password: str
+
+@router.post("/login", tags=["Auth"], summary="로그인")
+async def login_mock(payload: LoginRequest):
+    if payload.id == "testuser" and payload.password == "password":
+        return {
+            "status": 200,
+            "message": "로그인 성공",
+            "data": {  # unwrap 함수가 response.data.data를 찾으므로 data 계층을 만들기
+                "token": "mock-jwt-token",
+                "user": {"id": payload.id, "role": "user"}
+            }
+        }
+    raise HTTPException(
+        status_code=401,
+        detail="아이디 또는 비밀번호가 일치하지 않습니다."
+    )
+
 # =========================================================================
-# [1] 가전 도메인 API
+# 가전 도메인 API
 # =========================================================================
 @router.get("/appliances", response_model=List[ApplianceSchema], tags=["Appliances"])
 def get_all_appliances():
@@ -48,8 +69,8 @@ async def get_current_carbon_intensity(db: aiosqlite.Connection = Depends(get_db
             "updated_at": now_iso,
             "carbon_intensity": raw_current["carbon_intensity"],
             "level": raw_current["level"],
-            "renewable_ratio": raw_current["renewable_ratio"],  # 데이터 유실 위험 0% 🟢
-            "coal_ratio": raw_current["coal_ratio"]             # 데이터 유실 위험 0% 🟢
+            "renewable_ratio": raw_current["renewable_ratio"],  # 데이터 유실 위험 0%
+            "coal_ratio": raw_current["coal_ratio"]             # 데이터 유실 위험 0%
         }
     }
 
