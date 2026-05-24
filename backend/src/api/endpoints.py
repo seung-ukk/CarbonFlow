@@ -84,15 +84,19 @@ async def get_carbon_forecast(db: aiosqlite.Connection = Depends(get_db)):
 async def chat_with_eco_agent(appliance_id: str, db: aiosqlite.Connection = Depends(get_db)):
     try:
         appliance = JSONDatabase.get_appliance_by_id(appliance_id)
+        
+        current_emission = CarbonCalculator.calculate_appliance_emission(appliance_id)
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
         
+
     return {
         "recommended_time": "22:00",
         "carbon_saved_g": 142.5,
         "reasoning_logs": [
-            {"step": 1, "title": "가전 분석", "content": f"{appliance['name']} 분석 완료"},
-            {"step": 2, "title": "탄소 대조", "content": "22시 가동 시 탄소 최적화 가능"}
+            {"step": 1, "title": "가전 분석", "content": f"{appliance['name']} 스펙 로드 완료"},
+            {"step": 2, "title": "탄소 배출량 연산", "content": f"현재 가동 시 예상 배출량: {current_emission}g"}
         ],
-        "agent_response": f"현재 탄소 배출량이 많습니다. {appliance['name']}는 밤 22시에 돌려보세요!"
+        "agent_response": f"현재 탄소 배출량이 유동적입니다. {appliance['name']}를 지금 돌리시면 약 {current_emission}g의 탄소가 발생해요. 밤 22시에 돌려보시는 건 어떨까요?"
     }

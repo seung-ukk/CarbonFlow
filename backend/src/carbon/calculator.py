@@ -2,6 +2,8 @@
 from datetime import datetime, timedelta
 from src.carbon.kpx_client import KPXClient
 
+from src.database.connection import JSONDatabase
+
 kpx_client = KPXClient()
 
 class CarbonCalculator:
@@ -60,16 +62,14 @@ class CarbonCalculator:
 
     @classmethod
     def find_optimal_window(cls, forecasts: list) -> dict:
-        """ 생성된 예측 배열을 기반으로 가장 탄소 배출이 적은 시간대(시작/종료)를 찾아 반환합니다."""
+        """생성된 예측 배열을 기반으로 가장 탄소 배출이 적은 시간대를 찾아 반환합니다."""
         if not forecasts:
             now_iso = datetime.now().strftime("%Y-%m-%dT%H:00:00+09:00")
             return {"start": now_iso, "end": now_iso}
             
-        # 탄소 강도가 가장 낮은(최적인) 아이템 추출
         best_item = min(forecasts, key=lambda x: x["carbon_intensity"])
         best_start_str = best_item["hour"]
         
-        # ISO 8601 파싱 후 가동 시간(예: 기본 2시간 가동 기준)을 더해 종료 시간 산출
         start_dt = datetime.strptime(best_start_str, "%Y-%m-%dT%H:%M:%S+09:00")
         best_end_str = (start_dt + timedelta(hours=2)).strftime("%Y-%m-%dT%H:00:00+09:00")
         
@@ -79,11 +79,23 @@ class CarbonCalculator:
         }
 
     @classmethod
-    def calculate_appliance_emission(cls, power_w: float, duration_hours: float) -> float:
-        """특정 가전의 전력 소모량과 가동시간 기준 예상 탄소 배출량(g)을 연산합니다."""
+    def calculate_appliance_emission(cls, appliance_id: str) -> float:
+        """
+        가전 ID를 받아 appliances.json DB에서 
+        소비전력(power_consumption_w)과 가동시간(duration_hours)을 가져와 탄소 배출량을 연산하기
+        """
+        # 1. DB에서 가전 상세 정보 조회 (없으면 내장된 ValueError 예외 처리로 404 에러 발생)
+        appliance = JSONDatabase.get_appliance_by_id(appliance_id)
+        
+        power_w = appliance["power_consumption_w"]
+        duration_hours = appliance["duration_hours"]
+        
+        # 2. 실시간 탄소강도 추출
         current_data = cls.get_current_carbon_intensity()
         current_intensity = current_data["carbon_intensity"]
-        power_kw = power_w / 1000.0
         
+        # 3. 공식 대입 연산 (W -> kW 변환)
+        power_kw = power_w / 1000.0
         total_carbon_g = power_kw * duration_hours * current_intensity
+        
         return round(total_carbon_g, 2)
