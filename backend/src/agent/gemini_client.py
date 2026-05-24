@@ -54,8 +54,6 @@ class GeminiClient:
         except Exception as e:
             logger.error("Failed to get response from gemini.", exc_info=True)
             raise RuntimeError("Failed to get response from gemini.") from e
-        finally:
-            await client.aio.aclose()
         
     async def generate_recommand_message(
         self,
@@ -96,7 +94,7 @@ async def get_recommand_message(context: GenerateRecommandMsgCtx) -> str:
     instance = GeminiClient()
     for i in range(0, 3):
         try:
-            res = await instance.generate_conversation_message(context)
+            res = await instance.generate_recommand_message(context)
             return res
         except RuntimeError as e:
             last_exc = e
