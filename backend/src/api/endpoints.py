@@ -12,25 +12,7 @@ from src.schemas.carbon import CurrentCarbonResponse, ForecastCarbonResponse
 
 router = APIRouter()
 
-class LoginRequest(BaseModel):
-    id: str        # 프론트의 { id: userId } 스펙과 매칭
-    password: str
 
-@router.post("/login", tags=["Auth"], summary="로그인")
-async def login_mock(payload: LoginRequest):
-    if payload.id == "testuser" and payload.password == "password":
-        return {
-            "status": 200,
-            "message": "로그인 성공",
-            "data": {  # unwrap 함수가 response.data.data를 찾으므로 data 계층을 만들기
-                "token": "mock-jwt-token",
-                "user": {"id": payload.id, "role": "user"}
-            }
-        }
-    raise HTTPException(
-        status_code=401,
-        detail="아이디 또는 비밀번호가 일치하지 않습니다."
-    )
 
 # =========================================================================
 # 가전 도메인 API

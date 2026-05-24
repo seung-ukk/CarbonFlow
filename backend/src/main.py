@@ -73,7 +73,7 @@ class LoginRequest(BaseModel):
     id: str
     password: str
 
-# 2. /api 없이 다이렉트로 들어오는 /login 요청을 처리하는 엔드포인트 배치
+#  /login 요청을 처리하는 엔드포인트 배치
 @app.post("/login", tags=["Auth"], summary="임시 데모용 루트 경로 Mock 로그인")
 async def root_login_mock(payload: LoginRequest):
     if payload.id == "testuser" and payload.password == "password":
