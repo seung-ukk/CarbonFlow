@@ -38,7 +38,7 @@ const NAV = [
   { id: "favorite", label: "Bookmark", Icon: IconBookmark },
 ];
 
-const AUTH_NAV = { id: "login", label: "Login", Icon: IconLogin };
+const AUTH_NAV = { id: "logout", label: "Logout", Icon: IconLogin };
 
 function NavButton({ item, active, onNavigate }) {
   const { id, label, Icon } = item;
@@ -59,7 +59,7 @@ function NavButton({ item, active, onNavigate }) {
   );
 }
 
-function Sidebar({ route, onNavigate }) {
+function Sidebar({ route, onNavigate, onLogout }) {
   return (
     <aside className="w-24 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col items-center justify-between pt-8 pb-6">
       <div className="flex flex-col items-center gap-8 w-full">
@@ -80,8 +80,8 @@ function Sidebar({ route, onNavigate }) {
       <nav className="w-full px-3">
         <NavButton
           item={AUTH_NAV}
-          active={route === AUTH_NAV.id}
-          onNavigate={onNavigate}
+          active={false}
+          onNavigate={onLogout}
         />
       </nav>
     </aside>

@@ -4,17 +4,15 @@ import HomePage from "./HomePage";
 import ForecastPage from "./ForecastPage";
 import RecommendPage from "./RecommendPage";
 import AppliancePage from "./AppliancePage";
-import LoginPage from "./LoginPage";
 
 const ROUTES = {
   home: HomePage,
   forecast: ForecastPage,
   recommend: RecommendPage,
   favorite: AppliancePage,
-  login: LoginPage,
 };
 
-function Dashboard() {
+function Dashboard({ onLogout }) {
   const [route, setRoute] = useState("home");
   const [favoriteAppliances, setFavoriteAppliances] = useState([]);
 
@@ -22,7 +20,7 @@ function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-[#faf5ff]">
-      <Sidebar route={route} onNavigate={setRoute} />
+      <Sidebar route={route} onNavigate={setRoute} onLogout={onLogout} />
       <main className="flex-1 p-8 overflow-x-hidden">
         <PageComponent
           onNavigate={setRoute}

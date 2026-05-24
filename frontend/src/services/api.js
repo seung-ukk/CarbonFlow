@@ -9,6 +9,27 @@ export const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
 const unwrap = (response) => response.data?.data ?? response.data;
 
+const createApiDataError = (message) => {
+  const error = new Error(message);
+  error.response = { data: { message } };
+  return error;
+};
+
+const unwrapRequiredData = (response, fallbackMessage) => {
+  if (
+    response.data &&
+    Object.prototype.hasOwnProperty.call(response.data, "data")
+  ) {
+    if (response.data.data == null) {
+      throw createApiDataError(response.data.message ?? fallbackMessage);
+    }
+
+    return response.data.data;
+  }
+
+  return unwrap(response);
+};
+
 const LEVEL_STATUS_MAP = {
   low: "좋음",
   medium: "보통",
@@ -55,10 +76,20 @@ export const getApiErrorMessage = (error, fallback) =>
   error.response?.data?.message ?? fallback;
 
 export const getCurrentCarbon = async () =>
-  normalizeCurrentCarbon(unwrap(await api.get("/api/carbon/current")));
+  normalizeCurrentCarbon(
+    unwrapRequiredData(
+      await api.get("/api/carbon/current"),
+      "현재 탄소강도 데이터를 불러오지 못했습니다."
+    )
+  );
 
 export const getForecast = async () =>
-  normalizeForecast(unwrap(await api.get("/api/carbon/forecast")));
+  normalizeForecast(
+    unwrapRequiredData(
+      await api.get("/api/carbon/forecast"),
+      "12시간 예측 데이터를 불러오지 못했습니다."
+    )
+  );
 
 export const getAppliances = async () => unwrap(await api.get("/api/appliances"));
 

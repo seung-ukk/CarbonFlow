@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getApiErrorMessage, login } from "../services/api";
 
-function LoginPage({ onNavigate }) {
+function LoginPage({ onLoginSuccess }) {
   const [form, setForm] = useState({
     userId: "",
     password: "",
@@ -22,15 +22,21 @@ function LoginPage({ onNavigate }) {
       return;
     }
 
-    setIsLoading(true);
     setMessage("");
+    setIsLoading(true);
 
     try {
-      await login({
+      const authData = await login({
         userId: form.userId.trim(),
         password: form.password,
       });
-      onNavigate?.("home");
+
+      if (!authData?.token) {
+        setMessage("로그인 응답에 토큰이 없습니다.");
+        return;
+      }
+
+      onLoginSuccess?.(authData);
     } catch (error) {
       setMessage(getApiErrorMessage(error, "아이디 또는 비밀번호가 일치하지 않습니다."));
     } finally {
@@ -39,7 +45,7 @@ function LoginPage({ onNavigate }) {
   };
 
   return (
-    <div className="max-w-md">
+    <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center">
       <header className="mb-6">
         <h1 className="page-title">LOGIN</h1>
         <p className="page-subtitle">테스트 계정으로 로그인합니다.</p>
