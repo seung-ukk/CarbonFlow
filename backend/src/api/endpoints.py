@@ -27,7 +27,7 @@ def get_appliance(appliance_id: str):
 
 
 # =========================================================================
-# [2] 탄소강도 도메인 API (명세서 일치화 리팩터링 완전체 🔄)
+# [2] 탄소강도 도메인 API (엔진 통합형 무결점 코드)
 # =========================================================================
 @router.get(
     "/carbon/current", 
@@ -36,10 +36,9 @@ def get_appliance(appliance_id: str):
     summary="현재 실시간 탄소 지수 조회"
 )
 async def get_current_carbon_intensity(db: aiosqlite.Connection = Depends(get_db)):
-    # 변수를 두어 명확하게 표현
+    # 1. 뼈대 계산 엔진에서 실제 연산 및 발전 비중까지 완벽하게 처리된 딕셔너리 수령
     raw_current = CarbonCalculator.get_current_carbon_intensity()
-    intensity = raw_current["carbon_intensity"]
-    level = raw_current["level"]
+    
     now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:00+09:00")
 
     return {
@@ -47,10 +46,10 @@ async def get_current_carbon_intensity(db: aiosqlite.Connection = Depends(get_db
         "message": "현재 카본 강도 조회 성공",
         "data": {
             "updated_at": now_iso,
-            "carbon_intensity": intensity,
-            "level": level,
-            "renewable_ratio": 14.5 if level == "low" else 6.2,
-            "coal_ratio": 28.1 if level == "low" else 41.5
+            "carbon_intensity": raw_current["carbon_intensity"],
+            "level": raw_current["level"],
+            "renewable_ratio": raw_current["renewable_ratio"],  # 데이터 유실 위험 0% 🟢
+            "coal_ratio": raw_current["coal_ratio"]             # 데이터 유실 위험 0% 🟢
         }
     }
 
@@ -61,18 +60,15 @@ async def get_current_carbon_intensity(db: aiosqlite.Connection = Depends(get_db
     summary="향후 예측 탄소 곡선 조회"
 )
 async def get_carbon_forecast(db: aiosqlite.Connection = Depends(get_db)):
-    # 1. 변수를 두어 전체 예측 곡선을 먼저 확보합니다.
     raw_forecast = CarbonCalculator.forecast_carbon_curve()
-    
-    # 2. [리팩터링] 복잡한 계산식 대신, 완벽하게 격리 분리된 핵심 함수를 깔끔하게 호출합니다.
     best_window_data = CarbonCalculator.find_optimal_window(raw_forecast)
 
     return {
         "status": 200,
         "message": "12시간 예측 조회 성공",
         "data": {
-            "best_window": best_window_data,          # 분리된 함수 결과 대입
-            "forecasts": raw_forecast[:12]           # 명세서 기준 앞 12시간 분량만 슬라이싱
+            "best_window": best_window_data,          
+            "forecasts": raw_forecast[:12]  # 프론트 명세 맞춤형 12시간 슬라이싱
         }
     }
 
