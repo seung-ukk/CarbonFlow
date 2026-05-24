@@ -1,51 +1,87 @@
+# src/api/endpoints.py
 from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
 from typing import List
-from src.schemas.carbon import CarbonIntensityResponse
+from datetime import datetime, timedelta
 
 from src.database.connection import get_db, JSONDatabase
 from src.schemas.appliance import ApplianceSchema
 from src.carbon.calculator import CarbonCalculator
+from src.schemas.carbon import CurrentCarbonResponse, ForecastCarbonResponse
 
 router = APIRouter()
 
+# =========================================================================
 # [1] 가전 도메인 API
+# =========================================================================
 @router.get("/appliances", response_model=List[ApplianceSchema], tags=["Appliances"])
 def get_all_appliances():
-    """프론트엔드가 가전 목록을 조회해가는 완벽하게 검증된 엔드포인트"""
     return JSONDatabase.read_appliances()
 
 @router.get("/appliances/{appliance_id}", response_model=ApplianceSchema, tags=["Appliances"])
 def get_appliance(appliance_id: str):
-    """특정 가전제품 정보 상세 조회"""
     try:
         return JSONDatabase.get_appliance_by_id(appliance_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# [2] 탄소강도 도메인 API
+# =========================================================================
+# [2] 탄소강도 도메인 API (명세서 일치화 리팩터링 완전체 🔄)
+# =========================================================================
 @router.get(
-        "/carbon/intensity",
-        response_model=CarbonIntensityResponse,
-        tags=["Carbon"],
-        summary="실시간 탄소 집약도 및 24시간 예측 데이터 조회"
+    "/carbon/current", 
+    response_model=CurrentCarbonResponse,
+    tags=["Carbon"],
+    summary="현재 실시간 탄소 지수 조회"
 )
-async def get_carbon_intensity(db: aiosqlite.Connection = Depends(get_db)):
-    """실시간 탄소 집약도 및 24시간 예측 데이터 반환 엔드포인트"""
-    current_data = CarbonCalculator.get_current_carbon()
-    forecast_data = CarbonCalculator.get_24h_forecast()
-    
+async def get_current_carbon_intensity(db: aiosqlite.Connection = Depends(get_db)):
+    # 변수를 두어 명확하게 표현
+    raw_current = CarbonCalculator.get_current_carbon_intensity()
+    intensity = raw_current["carbon_intensity"]
+    level = raw_current["level"]
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:00+09:00")
+
     return {
-        "current": current_data,
-        "forecast": forecast_data
+        "status": 200,
+        "message": "현재 카본 강도 조회 성공",
+        "data": {
+            "updated_at": now_iso,
+            "carbon_intensity": intensity,
+            "level": level,
+            "renewable_ratio": 14.5 if level == "low" else 6.2,
+            "coal_ratio": 28.1 if level == "low" else 41.5
+        }
+    }
+
+@router.get(
+    "/carbon/forecast", 
+    response_model=ForecastCarbonResponse,
+    tags=["Carbon"],
+    summary="향후 예측 탄소 곡선 조회"
+)
+async def get_carbon_forecast(db: aiosqlite.Connection = Depends(get_db)):
+    # 1. 변수를 두어 전체 예측 곡선을 먼저 확보합니다.
+    raw_forecast = CarbonCalculator.forecast_carbon_curve()
+    
+    # 2. [리팩터링] 복잡한 계산식 대신, 완벽하게 격리 분리된 핵심 함수를 깔끔하게 호출합니다.
+    best_window_data = CarbonCalculator.find_optimal_window(raw_forecast)
+
+    return {
+        "status": 200,
+        "message": "12시간 예측 조회 성공",
+        "data": {
+            "best_window": best_window_data,          # 분리된 함수 결과 대입
+            "forecasts": raw_forecast[:12]           # 명세서 기준 앞 12시간 분량만 슬라이싱
+        }
     }
 
 
+# =========================================================================
 # [3] AI 에이전트 도메인 API (임시 테스트용 가짜 데이터 버전)
+# =========================================================================
 @router.post("/agent/chat", tags=["Agent"])
 async def chat_with_eco_agent(appliance_id: str, db: aiosqlite.Connection = Depends(get_db)):
-    """서버 정상 가동 테스트를 위한 임시 에이전트 샌드박스 엔드포인트"""
     try:
         appliance = JSONDatabase.get_appliance_by_id(appliance_id)
     except ValueError as e:

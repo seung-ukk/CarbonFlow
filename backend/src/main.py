@@ -8,9 +8,12 @@ from src.core.config import settings
 from src.database.connection import Database
 from src.api.endpoints import router as api_router
 
+
+
 # 기본 로깅 세팅
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,7 +58,7 @@ app.add_middleware(
 )
 
 # endpoints.py 라우터 연결
-app.include_router(api_router)
+app.include_router(api_router, prefix="/api")
 
 @app.get("/", tags=["Root"])
 def read_root():
