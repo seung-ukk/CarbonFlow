@@ -1,7 +1,22 @@
 import os
 import pandas as pd
-from datetime import datetime, timedelta
+import requests
+import logging
+logger = logging.getLogger(__file__)
+
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
 from src.database.connection import JSONDatabase
+
+class ForecastItem(BaseModel):
+    carbonIntensity: int
+    datetime: datetime
+
+class Forecast(BaseModel):
+    forecast: List[ForecastItem] = Field(default_factory=list)
 
 class CarbonCalculator:
     BASE_INTENSITY = 330.0  
@@ -93,92 +108,132 @@ class CarbonCalculator:
             "coal_ratio": coal_ratio
         }
 
-    @classmethod
-    def forecast_carbon_curve(cls) -> dict:  #리턴 타입을 구조적 dict로 변경
-        """[2번 과제 완결] 미래 24시간 곡선 시뮬레이션 및 프론트엔드용 요약 지표(최적/주의)를 통합 반환합니다."""
-        try:
-            df = cls._load_kpx_dataframe()
-            forecast_list = []
-            now = datetime.now()
+    # @classmethod
+    # def forecast_carbon_curve(cls) -> dict:  #리턴 타입을 구조적 dict로 변경
+    #     """[2번 과제 완결] 미래 24시간 곡선 시뮬레이션 및 프론트엔드용 요약 지표(최적/주의)를 통합 반환합니다."""
+    #     try:
+    #         df = cls._load_kpx_dataframe()
+    #         forecast_list = []
+    #         now = datetime.now()
             
-            # 현재 분 기준 버킷 동기화 (예: 42분 기준이면 미래 시간대들도 전부 XX시 40분행 서칭)
-            bucketed_minute = (now.minute // 5) * 5
+    #         # 현재 분 기준 버킷 동기화 (예: 42분 기준이면 미래 시간대들도 전부 XX시 40분행 서칭)
+    #         bucketed_minute = (now.minute // 5) * 5
             
-            for i in range(24):
-                future_time = now + timedelta(hours=i)
-                future_hour = future_time.hour
+    #         for i in range(24):
+    #             future_time = now + timedelta(hours=i)
+    #             future_hour = future_time.hour
                 
-                # 미래 시각의 시간(HH)과 계산된 분(MM) 버킷 결합
-                target_hhmm = f"{future_time.strftime('%H')}{bucketed_minute:02d}"
+    #             # 미래 시각의 시간(HH)과 계산된 분(MM) 버킷 결합
+    #             target_hhmm = f"{future_time.strftime('%H')}{bucketed_minute:02d}"
                 
-                matched_rows = df[df['hhmm'] == target_hhmm]
-                if not matched_rows.empty:
-                    current_demand = matched_rows.iloc[0]['current_demand']
-                else:
-                    target_hh = future_time.strftime("%H")
-                    backup_rows = df[df['hhmm'].str.startswith(target_hh)]
-                    current_demand = backup_rows['current_demand'].mean() if not backup_rows.empty else 56000.0
+    #             matched_rows = df[df['hhmm'] == target_hhmm]
+    #             if not matched_rows.empty:
+    #                 current_demand = matched_rows.iloc[0]['current_demand']
+    #             else:
+    #                 target_hh = future_time.strftime("%H")
+    #                 backup_rows = df[df['hhmm'].str.startswith(target_hh)]
+    #                 current_demand = backup_rows['current_demand'].mean() if not backup_rows.empty else 56000.0
                 
-                # 탄소 효율 수리 모델 공식 연동
-                min_d, max_d = 50000.0, 65000.0
-                demand_ratio = max(0.0, min(1.0, (current_demand - min_d) / (max_d - min_d)))
-                base = cls.BASE_INTENSITY + (demand_ratio * cls.PEAK_PENALTY_FACTOR)
+    #             # 탄소 효율 수리 모델 공식 연동
+    #             min_d, max_d = 50000.0, 65000.0
+    #             demand_ratio = max(0.0, min(1.0, (current_demand - min_d) / (max_d - min_d)))
+    #             base = cls.BASE_INTENSITY + (demand_ratio * cls.PEAK_PENALTY_FACTOR)
                 
-                # 낮 12~14시 태양광 인센티브 가중치 반영
-                if 12 <= future_hour <= 14:
-                    base = base * 0.75
+    #             # 낮 12~14시 태양광 인센티브 가중치 반영
+    #             if 12 <= future_hour <= 14:
+    #                 base = base * 0.75
                     
-                base = round(base, 2)
-                level = "low" if base <= 350.0 else "medium" if base <= 430.0 else "high"
+    #             base = round(base, 2)
+    #             level = "low" if base <= 350.0 else "medium" if base <= 430.0 else "high"
                 
-                forecast_list.append({
-                    "hour": future_time.strftime("%Y-%m-%dT%H:00:00+09:00"),
-                    "carbon_intensity": base,
-                    "level": level
-                })
+    #             forecast_list.append({
+    #                 "hour": future_time.strftime("%Y-%m-%dT%H:00:00+09:00"),
+    #                 "carbon_intensity": base,
+    #                 "level": level
+    #             })
                 
-            # 생성된 24시간 배열 내에서 최적(Min)과 주의(Max) 지표 역산
-            if forecast_list:
-                min_item = min(forecast_list, key=lambda x: x["carbon_intensity"])
-                max_item = max(forecast_list, key=lambda x: x["carbon_intensity"])
+    #         # 생성된 24시간 배열 내에서 최적(Min)과 주의(Max) 지표 역산
+    #         if forecast_list:
+    #             min_item = min(forecast_list, key=lambda x: x["carbon_intensity"])
+    #             max_item = max(forecast_list, key=lambda x: x["carbon_intensity"])
                 
-                return {
-                    "forecasts": forecast_list,
-                    "min_carbon_intensity": min_item["carbon_intensity"],  # 최적 탄소강도 수치
-                    "max_carbon_hour": max_item["hour"],                    # 주의 시간대 타임스탬프
-                    "max_carbon_intensity": max_item["carbon_intensity"]
-                }
+    #             return {
+    #                 "forecasts": forecast_list,
+    #                 "min_carbon_intensity": min_item["carbon_intensity"],  # 최적 탄소강도 수치
+    #                 "max_carbon_hour": max_item["hour"],                    # 주의 시간대 타임스탬프
+    #                 "max_carbon_intensity": max_item["carbon_intensity"]
+    #             }
             
-            return {"forecasts": [], "min_carbon_intensity": 0.0, "max_carbon_hour": "", "max_carbon_intensity": 0.0}
+    #         return {"forecasts": [], "min_carbon_intensity": 0.0, "max_carbon_hour": "", "max_carbon_intensity": 0.0}
             
-        except Exception as e:
-            print(f"===> [Warning] 예측 곡선 생성 중 대피로 가동: {str(e)}")
-            forecast_list = []
-            now = datetime.now()
-            for i in range(24):
-                future_time = now + timedelta(hours=i)
-                future_hour = future_time.hour
-                base = 370.0 if 0 <= future_hour < 6 else (460.0 if (8 <= future_hour <= 10 or 18 <= future_hour <= 21) else 410.0)
-                if 12 <= future_hour <= 14: base *= 0.75
-                level = "low" if base <= 350.0 else "medium" if base <= 430.0 else "high"
-                forecast_list.append({
-                    "hour": future_time.strftime("%Y-%m-%dT%H:00:00+09:00"),
-                    "carbon_intensity": round(base, 2),
-                    "level": level
-                })
+    #     except Exception as e:
+    #         print(f"===> [Warning] 예측 곡선 생성 중 대피로 가동: {str(e)}")
+    #         forecast_list = []
+    #         now = datetime.now()
+    #         for i in range(24):
+    #             future_time = now + timedelta(hours=i)
+    #             future_hour = future_time.hour
+    #             base = 370.0 if 0 <= future_hour < 6 else (460.0 if (8 <= future_hour <= 10 or 18 <= future_hour <= 21) else 410.0)
+    #             if 12 <= future_hour <= 14: base *= 0.75
+    #             level = "low" if base <= 350.0 else "medium" if base <= 430.0 else "high"
+    #             forecast_list.append({
+    #                 "hour": future_time.strftime("%Y-%m-%dT%H:00:00+09:00"),
+    #                 "carbon_intensity": round(base, 2),
+    #                 "level": level
+    #             })
                 
-            min_item = min(forecast_list, key=lambda x: x["carbon_intensity"])
-            max_item = max(forecast_list, key=lambda x: x["carbon_intensity"])
+    #         min_item = min(forecast_list, key=lambda x: x["carbon_intensity"])
+    #         max_item = max(forecast_list, key=lambda x: x["carbon_intensity"])
             
-            return {
-                "forecasts": forecast_list,
-                "min_carbon_intensity": min_item["carbon_intensity"],
-                "max_carbon_hour": max_item["hour"],
-                "max_carbon_intensity": max_item["carbon_intensity"]
-            }
-            
-    
+    #         return {
+    #             "forecasts": forecast_list,
+    #             "min_carbon_intensity": min_item["carbon_intensity"],
+    #             "max_carbon_hour": max_item["hour"],
+    #             "max_carbon_intensity": max_item["carbon_intensity"]
+    #         }
+
+    @classmethod
+    def forecast_carbon_curve(cls) -> dict:
+        url = 'https://api.electricitymaps.com/v3/carbon-intensity/forecast?zone=KR'
+        header = { 'auth-token': os.getenv('ELECTRICITYMAPS_API_KEY') }
+        r_response = requests.get(url, headers=header).json()
+        response = Forecast(**r_response)
+
+        now = datetime.now(ZoneInfo("Asia/Seoul"))
         
+        final_forecast = []
+        min_carbon_intensity = 4096
+        max_carbon_intensity = 0
+        for forecast_item in response.forecast:
+            target_dt = forecast_item.datetime
+            if isinstance(target_dt, str):
+                target_dt = datetime.fromisoformat(target_dt)
+            
+            kst_target_dt = target_dt.astimezone(ZoneInfo("Asia/Seoul"))
+
+            if (kst_target_dt - now).total_seconds() > 0:
+                final_forecast.append({
+                    'hour': kst_target_dt.isoformat(timespec='seconds'),
+                    'carbon_intensity': forecast_item.carbonIntensity,
+                    'level': "low" if forecast_item.carbonIntensity <= 350.0 else "medium" if forecast_item.carbonIntensity <= 430.0 else "high"
+                })
+
+                if min_carbon_intensity > forecast_item.carbonIntensity:
+                    min_carbon_intensity = forecast_item.carbonIntensity
+
+                if max_carbon_intensity < forecast_item.carbonIntensity:
+                    max_carbon_hour = forecast_item.datetime.strftime("%Y-%m-%dT%H:%M:%S+09:00")
+                    max_carbon_intensity = forecast_item.carbonIntensity
+        
+        logger.info(f"탄소 예측: {final_forecast}")
+
+        return {
+            'forecasts': final_forecast,
+            'min_carbon_intensity': min_carbon_intensity,
+            'max_carbon_hour': max_carbon_hour,
+            'max_carbon_intensity"': max_carbon_intensity
+        }
+
     @classmethod
     def find_optimal_window(cls, forecasts: list) -> dict:
         """생성된 예측 배열을 기반으로 가장 탄소 배출이 적은 시간대를 찾아 반환합니다."""
