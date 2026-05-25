@@ -4,10 +4,10 @@ import requests
 import logging
 logger = logging.getLogger(__file__)
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 
 from src.database.connection import JSONDatabase
 
@@ -19,86 +19,59 @@ class Forecast(BaseModel):
     forecast: List[ForecastItem] = Field(default_factory=list)
 
 class CarbonCalculator:
-    BASE_INTENSITY = 330.0  
-    PEAK_PENALTY_FACTOR = 160.0  
-    CSV_PATH = os.path.join("backend", "src", "database", "kpx_sukub.csv")
-
-    @classmethod
-    def _load_kpx_dataframe(cls) -> pd.DataFrame:
-        if not os.path.exists(cls.CSV_PATH):
-            raise FileNotFoundError(f"전력거래소 실측 데이터 파일이 없습니다: {cls.CSV_PATH}")
-        
-        df = pd.read_csv(
-            cls.CSV_PATH,
-            encoding="utf-8",
-            skiprows=1,
-            names=['base_time', 'supply_cap', 'current_demand', 'max_forecast', 'reserve_cap', 'reserve_rate', 'op_reserve_cap', 'op_reserve_rate']
-        )
-        df = df.dropna(subset=['base_time', 'current_demand'])
-        df['base_time'] = df['base_time'].astype(str).str.strip()
-        df['current_demand'] = df['current_demand'].astype(float)
-        
-        # YYYYMMDDHHMMSS 구조의 8번째부터 12번째 인덱스 직전까지 잘라내어 "HHMM" 컬럼화
-        df['hhmm'] = df['base_time'].str[8:12]
-        return df
-
     @classmethod
     def get_current_carbon_intensity(cls) -> dict:
-        """[버킷팅 알고리즘 완결판] 애매한 현재 분 단위를 5분 바구니로 정렬하여 실측 매칭을 수행합니다."""
-        now = datetime.now()
-        current_hour = now.hour
-        
-        #[시계열 버킷팅] 21시 42분 -> 21시 40분 (5분 단위 내림 양자화)
-        bucketed_minute = (now.minute // 5) * 5
-        target_hhmm = f"{now.strftime('%H')}{bucketed_minute:02d}"
-        
-        try:
-            df = cls._load_kpx_dataframe()
-            
-            # 버킷팅된 시간("HHMM")과 CSV 컬럼을 1:1 정밀 매칭
-            matched_rows = df[df['hhmm'] == target_hhmm]
-                
-            if not matched_rows.empty:
-                current_demand = matched_rows.iloc[0]['current_demand']
-                print(f"===> [KPX 버킷팅 성공] {target_hhmm} 타임슬롯 실측 수요 매칭: {current_demand} MW")
-            else:
-                # 특정 새벽 시간대 버킷이 비어있을 경우 해당 시간(HH)의 평균값으로 안전 마진 확보
-                target_hh = now.strftime("%H")
-                backup_rows = df[df['hhmm'].str.startswith(target_hh)]
-                current_demand = backup_rows['current_demand'].mean() if not backup_rows.empty else 57000.0
-            
-        except Exception as e:
-            print(f"===> [Warning] 실시간 지수 로드 중 Fallback 시뮬레이터 가동: {str(e)}")
-            # 인프라 장애 시 표준 전력 프로파일 가상 부하 세팅
-            current_demand = 63000.0 if 18 <= current_hour <= 21 else 57000.0
+        header = { 'auth-token': os.getenv('ELECTRICITYMAPS_API_KEY') }
 
-        # [통합 연속형 연산 엔진] 수요 비례 탄소 지수 및 발전 비중 연산
-        min_d, max_d = 50000.0, 65000.0
-        demand_ratio = max(0.0, min(1.0, (current_demand - min_d) / (max_d - min_d)))
-        
-        realtime_intensity = cls.BASE_INTENSITY + (demand_ratio * cls.PEAK_PENALTY_FACTOR)
-        
-        # 낮 시간대(12시~14시) 태양광 공급 인센티브 버프 반영 (0.75배)
-        solar_bonus = 1.0
-        if 12 <= current_hour <= 14:
-            realtime_intensity = realtime_intensity * 0.75
-            solar_bonus = 1.4  # 태양광 비중 가중치 버프
-            
-        realtime_intensity = round(realtime_intensity, 2)
-        
-        # 대한민국 전력망 특성을 투영한 실측 기반 발전원 비중 역산 수리 모델
-        renewable_ratio = round((15.0 - (demand_ratio * 9.0)) * solar_bonus, 1)
-        renewable_ratio = max(1.0, min(25.0, renewable_ratio))
-        coal_ratio = round(30.0 + (demand_ratio * 15.0), 1)
-        
-        # 기존 기획 규격 등급 분기점 (350, 430) 완전 동기화
+        # 현재 카본 강도 조회
+        url = 'https://api.electricitymaps.com/v3/carbon-intensity/latest?zone=KR'
+        try:
+            response = requests.get(url, headers=header).json()
+            realtime_intensity = response['carbonIntensity']
+        except Exception:
+            logger.error(f"Could not get carbon intensity response['carbonIntensity]", exc_info=True)
+            realtime_intensity = 422
+
+        # 현재 카본 강도에 따른 status
         if realtime_intensity <= 350.0:
             level, status = "low", "좋음"
         elif realtime_intensity <= 430.0:
             level, status = "medium", "보통"
         else:
             level, status = "high", "나쁨"
-            
+
+        # 현재 재생 에너지 비중 조회
+        url = 'https://api.electricitymaps.com/v3/renewable-energy/latest?zone=KR'
+        try:
+            response = requests.get(url, headers=header).json()
+            r_renewable_ratio = response['value']
+            renewable_ratio = float(r_renewable_ratio)
+        except Exception:
+            logger.error(f"Could not get renewable energy response['value']", exc_info=True)
+            renewable_ratio = 14.0
+        
+        # 현재 총 전력량 조회
+        url = 'https://api.electricitymaps.com/v3/total-load/latest?zone=KR'
+        try:
+            response = requests.get(url, headers=header).json()
+            r_total_electricty = response['value']
+            total_electricty = round(r_total_electricty, 1)
+        except Exception:
+            logger.error(f"Could not get total load response['value']", exc_info=True)
+            total_electricty = 47933.5
+        
+        # 현재 석탄 발전량 조회
+        url = 'https://api.electricitymaps.com/v3/electricity-source/coal/latest?zone=KR'
+        try:
+            response = requests.get(url, headers=header).json()
+            coal = response['data']['value']
+        except Exception:
+            logger.error(f"Could not get coal value response['data']['value']", exc_info=True)
+            coal = 10135
+
+        # 석탄 에너지 비중 조회
+        coal_ratio = (coal / total_electricty) * 100.0
+
         return {
             "carbon_intensity": realtime_intensity,
             "status": status,
