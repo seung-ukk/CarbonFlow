@@ -1,11 +1,11 @@
 # src/api/endpoints.py
 from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
-from src.schemas.gemini import GenerateRecommandMsgCtx, AgentChatResponse, ReasoningStep
+from src.schemas.gemini import AgentChatRequest, GenerateRecommandMsgCtx, AgentChatResponse, ReasoningStep
 from src.agent.gemini_client import get_conversation_chat_message
 from src.database.connection import get_db, JSONDatabase
 from src.schemas.appliance import ApplianceSchema
@@ -84,10 +84,14 @@ async def get_carbon_forecast():
 # =========================================================================
 # AI 에이전트 도메인 API (자유 대화 및 실시간 컨텍스트 결합 완결본)
 # =========================================================================
+# =========================================================================
+# AI 에이전트 도메인 API (자유 대화 및 실시간 컨텍스트 결합 완결본)
+# =========================================================================
 @router.post("/agent/chat", tags=["Agent"], summary="실시간 Gemini AI 대화형 에이전트 챗")
 async def chat_with_eco_agent(
     appliance_id: str, 
-    user_message: str = "이 가전제품을 언제 돌리는 게 가장 탄소 배출이 적을까?", # 🌟 프론트 입력 메시지 낚아채기
+    message: Optional[str] = Query(None),       # 쿼리의 &message=... 낚아채기 추가
+    payload: Optional[AgentChatRequest] = None,  # Body 구조체 수용 마진 추가
     db: aiosqlite.Connection = Depends(get_db)
 ):
     """
@@ -95,6 +99,16 @@ async def chat_with_eco_agent(
     실시간 탄소 데이터 기반으로 맞춤형 답변을 생성하는 리얼 AI 에이전트 통로입니다.
     """
     try:
+        #프론트엔드 입력 데이터 정밀 스위칭 파싱 추출
+        user_message = "이 가전제품을 언제 돌리는 게 가장 탄소 배출이 적을까?" # 기본값 세팅
+        
+        if message:
+            # 1순위: 프론트가 쿼리 스트링(&message=...)으로 보낸 실시간 텍스트 채택
+            user_message = message
+        elif payload and payload.user_message:
+            # 2순위: 만약 Body(JSON) 통으로 user_message가 들어왔다면 그것을 채택
+            user_message = payload.user_message
+
         appliance = JSONDatabase.get_appliance_by_id(appliance_id)
         
         # 1. 실시간 탄소 연산 지표 수집
@@ -123,7 +137,7 @@ async def chat_with_eco_agent(
         
         # 3. 3회 리트라이 및 전용 비동기 대화 제어 함수 결합
         try:
-            # 상단에서 단독 임포트한 정석 대화 처리 엔진 함수 호출
+            # 상단에서 단독 임포트한 정석 대화 처리 엔진 함수 호출 (추출된 user_message 주입)
             gemini_response = await get_conversation_chat_message(ai_context, user_message)
         except Exception as e:
             print(f"===> [Warning] 대화형 Gemini 통신 실패 세이프티 가동: {str(e)}")
@@ -140,7 +154,7 @@ async def chat_with_eco_agent(
             "recommended_time": best_window_data.get("start", "12:00"),
             "carbon_saved_g": saved_carbon_g,
             "reasoning_logs": reasoning_logs,
-            "agent_response": gemini_response  # 유저 질문에 맞춰 동적으로 변하는 진짜 AI의 답변!
+            "agent_response": gemini_response  # 유저 질문에 맞춰 동적으로 변하는 AI의 답변!, gemini_key 리소스 고려해서 테스트하기
         }
 
     except ValueError as e:
