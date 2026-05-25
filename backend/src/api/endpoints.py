@@ -1,5 +1,5 @@
 # src/api/endpoints.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 import aiosqlite
 from typing import List, Optional
 from datetime import datetime
