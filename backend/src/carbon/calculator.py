@@ -26,7 +26,7 @@ class CarbonCalculator:
         # 현재 카본 강도 조회
         url = 'https://api.electricitymaps.com/v3/carbon-intensity/latest?zone=KR'
         try:
-            response = requests.get(url, headers=header).json()
+            response = requests.get(url, headers=header, timeout=5).json()
             realtime_intensity = response['carbonIntensity']
         except Exception:
             logger.error(f"Could not get carbon intensity response['carbonIntensity]", exc_info=True)
@@ -43,7 +43,7 @@ class CarbonCalculator:
         # 현재 재생 에너지 비중 조회
         url = 'https://api.electricitymaps.com/v3/renewable-energy/latest?zone=KR'
         try:
-            response = requests.get(url, headers=header).json()
+            response = requests.get(url, headers=header, timeout=5).json()
             r_renewable_ratio = response['value']
             renewable_ratio = float(r_renewable_ratio)
         except Exception:
@@ -53,7 +53,7 @@ class CarbonCalculator:
         # 현재 총 전력량 조회
         url = 'https://api.electricitymaps.com/v3/total-load/latest?zone=KR'
         try:
-            response = requests.get(url, headers=header).json()
+            response = requests.get(url, headers=header, timeout=5).json()
             r_total_electricty = response['value']
             total_electricty = round(r_total_electricty, 1)
         except Exception:
@@ -63,8 +63,9 @@ class CarbonCalculator:
         # 현재 석탄 발전량 조회
         url = 'https://api.electricitymaps.com/v3/electricity-source/coal/latest?zone=KR'
         try:
-            response = requests.get(url, headers=header).json()
-            coal = response['data']['value']
+            response = requests.get(url, headers=header, timeout=5).json()
+            data: List[dict] = response['data']
+            coal = data[0].get('value')
         except Exception:
             logger.error(f"Could not get coal value response['data']['value']", exc_info=True)
             coal = 10135
@@ -85,7 +86,7 @@ class CarbonCalculator:
     def forecast_carbon_curve(cls) -> dict:
         url = 'https://api.electricitymaps.com/v3/carbon-intensity/forecast?zone=KR'
         header = { 'auth-token': os.getenv('ELECTRICITYMAPS_API_KEY') }
-        r_response = requests.get(url, headers=header).json()
+        r_response = requests.get(url, headers=header, timeout=5).json()
         response = Forecast(**r_response)
 
         now = datetime.now(ZoneInfo("Asia/Seoul"))
