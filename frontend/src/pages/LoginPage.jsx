@@ -1,6 +1,6 @@
 import { useState } from "react";
-import axios from "axios";
 import { login } from "../services/api";
+import api from "../services/api";
 
 const INPUT_CLASS =
   "mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-violet-400";
@@ -15,7 +15,7 @@ function LoginPage({ onLoginSuccess }) {
 
   const handleRegister = async (signUpData) => {
     try {
-      const response = await axios.post("/register", {
+      const response = await api.post("/register", {
         id: signUpData.id,
         password: signUpData.password
       });
