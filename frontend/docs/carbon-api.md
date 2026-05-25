@@ -1,5 +1,3 @@
-# Carbon API 명세서
-
 {
   "openapi": "3.1.0",
   "info": {
