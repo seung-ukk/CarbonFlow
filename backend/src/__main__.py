@@ -1,18 +1,23 @@
 # src/__main__.py
 import uvicorn
 import logging
+import aiosqlite
 
+from passlib.context import CryptContext
 from pathlib import Path
 from dotenv import load_dotenv
 from http.client import HTTPException
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from src.core.config import settings
-from src.database.connection import Database
+from src.database.connection import Database, get_db
 from src.api.endpoints import router as api_router
+
+# 파일 암호화 준비
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # 기본 로깅 세팅
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +48,14 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    password TEXT NOT NULL
+                );
+            """)
+            
             await conn.commit()
         await conn.close()
         logger.info("SQLite DB 'agent_logs' 테이블 검증 및 초기화 완료.")
@@ -68,7 +81,7 @@ app.add_middleware(
 # endpoints.py 라우터 연결
 app.include_router(api_router, prefix="/api")
 
-@app.get("/", tags=["Root"])
+@app.get("/api", tags=["Root"])
 def read_root():
     return {
         "status": "online",
@@ -76,13 +89,43 @@ def read_root():
         "database_path": settings.SQLITE_PATH
     }
 
+class RegisterRequest(BaseModel):
+    id: str
+    password: str
+
+@app.post("/register")
+async def register(
+    payload: RegisterRequest,
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    hashed_pwd = pwd_context.hash(payload.password)
+    try:
+        await db.execute(
+            "INSERT INTO users (id, password) VALUES (?, ?);",
+            (payload.id, hashed_pwd)
+        )
+        await db.commit()
+        return {
+            "status": 200,
+            "message": "회원가입 성공",
+            "data": {  # 프론트엔드의 unwrap() 구조 대응용 데이터 계층
+                "token": "mock-jwt-token",
+                "user": {"id": payload.id, "role": "user"}
+            }
+        }
+    except Exception as e:
+        raise HTTPException(500, detail="회원가입 중 오류 발생.")
+
 class LoginRequest(BaseModel):
     id: str
     password: str
 
-#  /login 요청을 처리하는 엔드포인트 배치
+# /login 요청을 처리하는 엔드포인트 배치
 @app.post("/login", tags=["Auth"], summary="임시 데모용 루트 경로 Mock 로그인")
-async def root_login_mock(payload: LoginRequest):
+async def root_login_mock(
+    payload: LoginRequest,
+    db: aiosqlite.Connection = Depends(get_db)
+    ):
     if payload.id == "testuser" and payload.password == "password":
         return {
             "status": 200,
@@ -92,10 +135,43 @@ async def root_login_mock(payload: LoginRequest):
                 "user": {"id": payload.id, "role": "user"}
             }
         }
-    raise HTTPException(
-        status_code=401,
-        detail="아이디 또는 비밀번호가 일치하지 않습니다."
-    )
+    
+    try:
+        async with db.execute("SELECT password FROM users WHERE id = ?;", (payload.id,)) as cursor:
+            row = await cursor.fetchone()
+            
+        if not row:
+            raise HTTPException(
+                status_code=401,
+                detail="아이디 또는 비밀번호가 일치하지 않습니다."
+            )
+            
+        db_hashed_pw = row["password"]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="서버 오류가 발생했습니다."
+        )
+    is_correct = pwd_context.verify(payload.password, db_hashed_pw)
+    
+    if is_correct:
+        return {
+            "status": 200,
+            "message": "로그인 성공",
+            "data": {
+                "token": "mock-jwt-token",
+                "user": {"id": payload.id, "role": "user"}
+            }
+        }
+    else:
+        # 비밀번호가 틀린 경우
+        raise HTTPException(
+            status_code=401,
+            detail="아이디 또는 비밀번호가 일치하지 않습니다."
+        )
 
 if __name__ == '__main__':
     uvicorn.run("src.__main__:app", host="127.0.0.1", port=8000, reload=True)

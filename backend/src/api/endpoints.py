@@ -5,17 +5,14 @@ from typing import List
 from datetime import datetime
 from pydantic import BaseModel
 
-
 from src.schemas.gemini import GenerateRecommandMsgCtx, AgentChatResponse, ReasoningStep
 from src.agent.gemini_client import get_conversation_chat_message
-
 from src.database.connection import get_db, JSONDatabase
 from src.schemas.appliance import ApplianceSchema
 from src.carbon.calculator import CarbonCalculator
 from src.schemas.carbon import CurrentCarbonResponse, ForecastCarbonResponse
 
 router = APIRouter()
-
 
 # =========================================================================
 # 가전 도메인 API
