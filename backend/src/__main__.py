@@ -1,19 +1,18 @@
-# src/main.py
-import os
+# src/__main__.py
+import uvicorn
+import logging
+
 from pathlib import Path
 from dotenv import load_dotenv
-
 from http.client import HTTPException
-import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
 from src.core.config import settings
 from src.database.connection import Database
 from src.api.endpoints import router as api_router
-
-
 
 # 기본 로깅 세팅
 logging.basicConfig(level=logging.INFO)
@@ -97,3 +96,6 @@ async def root_login_mock(payload: LoginRequest):
         status_code=401,
         detail="아이디 또는 비밀번호가 일치하지 않습니다."
     )
+
+if __name__ == '__main__':
+    uvicorn.run("src.__main__:app", host="127.0.0.1", port=8000, reload=True)
