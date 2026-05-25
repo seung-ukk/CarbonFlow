@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { mockLogin, mockRegister } from "../services/mockAuth";
+import axios from "axios";
+import { login } from "../services/api";
 
 const INPUT_CLASS =
   "mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-violet-400";
@@ -11,6 +12,19 @@ function LoginPage({ onLoginSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const isSignup = mode === "signup";
+
+  const handleRegister = async (signUpData) => {
+    try {
+      const response = await axios.post("/api/auth/register", {
+        username: signUpData.username,
+        email: signUpData.email,
+        password: signUpData.password
+      });
+      alert(response.data.message);
+    } catch (error) {
+      alert(error.response?.data?.detail || "가입 실패");
+    }
+  };
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
@@ -39,11 +53,10 @@ function LoginPage({ onLoginSuccess }) {
     setIsLoading(true);
     try {
       if (isSignup) {
-        mockRegister({ username: form.username.trim(), email: form.email.trim(), password: form.password });
+        await handleRegister({ username: form.username.trim(), email: form.email.trim(), password: form.password });
         switchMode("login");
-        setMessage({ text: "회원가입 성공! 로그인해주세요.", isError: false });
       } else {
-        const authData = mockLogin({ username: form.username.trim(), password: form.password });
+        const authData = await login({ username: form.username.trim(), password: form.password });
         if (!authData?.token) {
           setMessage({ text: "로그인 응답에 토큰이 없습니다.", isError: true });
           return;
@@ -51,7 +64,7 @@ function LoginPage({ onLoginSuccess }) {
         onLoginSuccess?.(authData);
       }
     } catch (error) {
-      setMessage({ text: error.message, isError: true });
+      setMessage({ text: error.response?.data?.detail ?? error.message, isError: true });
     } finally {
       setIsLoading(false);
     }
