@@ -106,7 +106,12 @@ export const sendChatMessage = async (applianceId, message) =>
       params: { appliance_id: applianceId, message },
     })
   );
-export const login = async ({ userId, password }) =>
-  unwrap(await api.post("/login", { id: userId, password }));
+export const login = async ({ id, password }) =>
+  unwrap(await api.post("/login", { id, password }));
+
+export const register = async ({ username, email, password }) => {
+  const response = await api.post("/api/auth/register", { username, email, password });
+  return response.data;
+};
 
 export default api;
