@@ -13,7 +13,7 @@
 - [기술 스택](#-기술-스택)
 - [프로젝트 구조](#-프로젝트-구조)
 - [시작하기](#-시작하기)
-- [API 명세](#-api-명세)
+- [API 명세](#-api-명세서)
 - [환경 변수](#-환경-변수)
 
 ---
@@ -22,45 +22,13 @@
 
 CarbonFlow는 한국전력거래소(KPX)에서 제공하는 **5분 단위 전국 전력수급 현황 CSV** 를 기반으로 전력망의 탄소강도(gCO₂/kWh)를 추정하고, Google Gemini AI 에이전트가 사용자의 가전제품별 최적 가동 시간을 추천해주는 서비스입니다.
 
-세탁기, 건조기, 식기세척기 등 전력 소비가 큰 가전의 가동 시간을 태양광 발전이 풍부한 시간대로 조정함으로써 일상에서 손쉽게 탄소 배출을 줄일 수 있습니다.
+세탁기, 건조기, 식기세척기 등 전력 소비가 큰 가전의 가동 시간을 태양광 발전이 풍부한 시간대로 조정함으로써 일상에서 손쉽게 탄소 배출을 최대 50% 줄일 수 있습니다.
 
 ---
 
 ## 데이터 동작 방식
 
-CarbonFlow의 탄소강도 계산은 **실시간 API가 아닌 전일(前日) KPX 실측 데이터**를 기반으로 합니다.
-
-```
-[전일 KPX 데이터 수집]
-한국전력거래소 공공데이터포털에서
-"5분단위 전국 전력수급현황" CSV를 수동으로 다운로드
-        ↓
-[로컬 CSV 파일로 저장]
-backend/src/database/kpx_sukub.csv
-        ↓
-[현재 시각과 가장 가까운 슬롯 매칭]
-현재 시각의 분(minute)을 5분 단위로 내림 (예: 14:42 → 14:40)
-해당 HHMM 슬롯의 전력 수요값(MW) 조회
-        ↓
-[탄소강도 연산]
-수요 비율 기반 탄소강도 계산
-낮 12~14시 태양광 인센티브 적용
-        ↓
-[결과 반환]
-현재/예측 탄소강도 + AI 에이전트 추천
-```
-
-### 탄소강도 계산 공식
-
-```
-탄소강도(gCO₂/kWh) = 330 + (수요비율 × 160)
-
-수요비율 = (현재수요 - 50,000MW) / (65,000MW - 50,000MW)  [0.0 ~ 1.0]
-
-낮 12~14시: 탄소강도 × 0.75  (태양광 발전 증가 반영)
-```
-
-> **Note:** CSV는 전날 데이터이므로 "오늘 같은 시간대에 어제는 어땠는가"를 기준으로 탄소강도를 추정합니다. 하루 단위 전력 패턴이 유사하다는 가정 하에 동작합니다.
+CarbonFlow의 탄소강도 계산은 **실시간 API**를 기반으로 합니다.
 
 ---
 
@@ -174,7 +142,7 @@ duyoutonT16/
 - Python 3.10+
 - Node.js 18+
 - Google Gemini API 키 ([Google AI Studio](https://aistudio.google.com/)에서 발급)
-- KPX 5분단위 전력수급 CSV ([공공데이터포털](https://www.data.go.kr)에서 다운로드)
+- Electricity Maps API 키 ([Electricity Maps](https://app.electricitymaps.com/dashboard)에서 발급)
 
 ### 1. 저장소 클론
 
@@ -184,26 +152,7 @@ cd duyoutonT16
 git checkout dev
 ```
 
-### 2. KPX CSV 데이터 준비
-
-[공공데이터포털](https://www.data.go.kr)에서 **"한국전력거래소\_5분단위 전국 전력수급현황"** 을 검색하여 전일 데이터를 다운로드한 뒤, 아래 경로에 저장합니다.
-
-```
-backend/src/database/kpx_sukub.csv
-```
-
-CSV 컬럼 구조는 다음과 같아야 합니다.
-
-| 컬럼 | 설명 |
-|------|------|
-| base_time | 기준시각 (YYYYMMDDHHMMSS) |
-| supply_cap | 공급능력 (MW) |
-| current_demand | 현재수요 (MW) |
-| max_forecast | 최대수요예측 (MW) |
-| reserve_cap | 공급예비력 (MW) |
-| reserve_rate | 공급예비율 (%) |
-
-### 3. 백엔드 실행
+### 2. 백엔드 실행
 
 ```bash
 cd backend
@@ -222,7 +171,7 @@ uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 백엔드가 실행되면 `http://localhost:8000` 에서 접근할 수 있습니다.  
 API 문서는 `http://localhost:8000/docs` 에서 확인하세요.
 
-### 4. 프론트엔드 실행
+### 3. 프론트엔드 실행
 
 ```bash
 cd frontend
@@ -236,10 +185,11 @@ npm run dev
 
 프론트엔드는 `http://localhost:5173` 에서 실행됩니다.
 
-### 5. 로그인
+### 4. 로그인
 
-서비스 접속 후 아래 테스트 계정으로 로그인하세요.
+서비스 접속 후 아래 테스트 계정으로 로그인 혹은 새로운 계정으로 회원가입 하세요.
 
+### 테스트 유저
 | 항목 | 값 |
 |------|-----|
 | 아이디 | `testuser` |
@@ -247,7 +197,7 @@ npm run dev
 
 ---
 
-## API 명세
+## API 명세서
 
 ### 인증
 
@@ -292,10 +242,10 @@ npm run dev
 # 필수 - Google AI Studio에서 발급
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# 선택 - 기상청 공공데이터포털 API 키
-WEATHER_API_KEY=your_weather_api_key_here
+# 필수 - Electricity Maps API 키
+ELECTRICITYMAPS_API_KEY=your_electricity_maps_api_key_here
 
-# 선택 - SQLite DB 경로 (기본값: db.sqlite3)
+# 필수 - SQLite DB 경로 (기본값: db.sqlite3)
 SQLITE_PATH=db.sqlite3
 ```
 
