@@ -12,6 +12,7 @@ import {
   getAgentRecommendation,
   getAppliances,
   getCurrentCarbon,
+  sendChatMessage,
 } from "../services/api";
 
 function formatRecommendationTime(value) {
@@ -23,6 +24,7 @@ function formatRecommendationTime(value) {
 function ChatPanel({ topPick }) {
   const optimalTime = formatRecommendationTime(topPick.optimal_time);
   const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: "ai",
@@ -30,17 +32,26 @@ function ChatPanel({ topPick }) {
     },
   ]);
 
-  const send = () => {
+  const send = async () => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || isThinking) return;
     setMessages((m) => [...m, { role: "user", text: trimmed }]);
     setInput("");
-    setTimeout(() => {
+    setIsThinking(true);
+    try {
+      const res = await sendChatMessage(topPick.appliance, trimmed);
+      const aiText =
+        res?.agent_response ??
+        "추천 페이지에서 가전별 최적 사용 시간을 확인해보세요!";
+      setMessages((m) => [...m, { role: "ai", text: aiText }]);
+    } catch {
       setMessages((m) => [
         ...m,
-        { role: "ai", text: "추천 페이지에서 가전별 최적 사용 시간을 확인해보세요!" },
+        { role: "ai", text: "죄송합니다, 응답을 가져오지 못했습니다. 잠시 후 다시 시도해주세요." },
       ]);
-    }, 600);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   return (
@@ -49,7 +60,7 @@ function ChatPanel({ topPick }) {
 
       {/* 메시지 목록 */}
       <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
-        {messages.map((msg, i) => (
+        {[...messages, ...(isThinking ? [{ role: "ai", text: "..." }] : [])].map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "ai" && (
               <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -82,7 +93,8 @@ function ChatPanel({ topPick }) {
         />
         <button
           onClick={send}
-          className="w-8 h-8 rounded-full bg-gray-200 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors text-gray-500"
+          disabled={isThinking}
+          className="w-8 h-8 rounded-full bg-gray-200 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
             <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />

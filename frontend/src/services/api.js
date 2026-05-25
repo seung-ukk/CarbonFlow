@@ -99,6 +99,13 @@ export const getAgentRecommendation = async (applianceId) =>
       params: { appliance_id: applianceId },
     })
   );
+
+export const sendChatMessage = async (applianceId, message) =>
+  unwrap(
+    await api.post("/api/agent/chat", null, {
+      params: { appliance_id: applianceId, message },
+    })
+  );
 export const login = async ({ userId, password }) =>
   unwrap(await api.post("/login", { id: userId, password }));
 
