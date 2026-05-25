@@ -7,7 +7,7 @@ const INPUT_CLASS =
 
 function LoginPage({ onLoginSuccess }) {
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ username: "", email: "", password: "", passwordConfirm: "" });
+  const [form, setForm] = useState({ id: "", password: "" });
   const [message, setMessage] = useState({ text: "", isError: true });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -15,12 +15,12 @@ function LoginPage({ onLoginSuccess }) {
 
   const handleRegister = async (signUpData) => {
     try {
-      const response = await axios.post("/api/auth/register", {
-        username: signUpData.username,
-        email: signUpData.email,
+      const response = await axios.post("/register", {
+        id: signUpData.id,
         password: signUpData.password
       });
       alert(response.data.message);
+      onLoginSuccess?.(response.data.data);
     } catch (error) {
       alert(error.response?.data?.detail || "가입 실패");
     }
@@ -28,7 +28,7 @@ function LoginPage({ onLoginSuccess }) {
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
-    setForm({ username: "", email: "", password: "", passwordConfirm: "" });
+    setForm({ id: "", password: "" });
     setMessage({ text: "", isError: true });
   };
 
@@ -40,23 +40,17 @@ function LoginPage({ onLoginSuccess }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!form.username.trim() || !form.password.trim()) {
+    if (!form.id.trim() || !form.password.trim()) {
       setMessage({ text: "아이디와 비밀번호를 입력해주세요.", isError: true });
-      return;
-    }
-
-    if (isSignup && form.password !== form.passwordConfirm) {
-      setMessage({ text: "비밀번호가 일치하지 않습니다.", isError: true });
       return;
     }
 
     setIsLoading(true);
     try {
       if (isSignup) {
-        await handleRegister({ username: form.username.trim(), email: form.email.trim(), password: form.password });
-        switchMode("login");
+        await handleRegister({ id: form.id.trim(), password: form.password });
       } else {
-        const authData = await login({ username: form.username.trim(), password: form.password });
+        const authData = await login({ id: form.id.trim(), password: form.password });
         if (!authData?.token) {
           setMessage({ text: "로그인 응답에 토큰이 없습니다.", isError: true });
           return;
@@ -84,25 +78,12 @@ function LoginPage({ onLoginSuccess }) {
           <span className="label-text">아이디</span>
           <input
             type="text"
-            value={form.username}
-            onChange={(e) => updateField("username", e.target.value)}
+            value={form.id}
+            onChange={(e) => updateField("id", e.target.value)}
             className={INPUT_CLASS}
             placeholder="아이디"
           />
         </label>
-
-        {isSignup && (
-          <label className="block">
-            <span className="label-text">이메일</span>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => updateField("email", e.target.value)}
-              className={INPUT_CLASS}
-              placeholder="이메일"
-            />
-          </label>
-        )}
 
         <label className="block">
           <span className="label-text">비밀번호</span>
@@ -114,19 +95,6 @@ function LoginPage({ onLoginSuccess }) {
             placeholder="비밀번호"
           />
         </label>
-
-        {isSignup && (
-          <label className="block">
-            <span className="label-text">비밀번호 확인</span>
-            <input
-              type="password"
-              value={form.passwordConfirm}
-              onChange={(e) => updateField("passwordConfirm", e.target.value)}
-              className={INPUT_CLASS}
-              placeholder="비밀번호 재입력"
-            />
-          </label>
-        )}
 
         {message.text && (
           <p
